@@ -1,0 +1,9 @@
+[package]
+name = "mmheroes-core"
+version = "0.1.0"
+authors = ["Sergej Jaskiewicz <jaskiewiczs@icloud.com>"]
+edition = "2018"
+
+[features]
+default = ["std"]
+std = []
