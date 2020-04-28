@@ -46,8 +46,11 @@ typedef enum {
 } MMHEROES_GameMode;
 
 typedef enum {
+  MMHEROES_Input_KeyUp,
+  MMHEROES_Input_KeyDown,
+  MMHEROES_Input_Enter,
+  MMHEROES_Input_Other,
   MMHEROES_Input_EOF,
-  MMHEROES_Input_Unknown,
 } MMHEROES_Input;
 
 typedef void *MMHEROES_RendererContext;
@@ -69,7 +72,8 @@ typedef struct {
   void (*clear_screen)(MMHEROES_RendererContext);
   void (*flush)(MMHEROES_RendererContext);
   void (*move_cursor_to)(MMHEROES_RendererContext, int32_t, int32_t);
-  void (*set_color)(MMHEROES_RendererContext, MMHEROES_Color);
+  void (*get_cursor_position)(MMHEROES_RendererContext, int32_t*, int32_t*);
+  void (*set_color)(MMHEROES_RendererContext, MMHEROES_Color, MMHEROES_Color);
   void (*write_str)(MMHEROES_RendererContext, const char*, uintptr_t);
   MMHEROES_Input (*getch)(MMHEROES_RendererContext);
   void (*sleep_ms)(MMHEROES_RendererContext, MMHEROES_Milliseconds);
