@@ -1,5 +1,5 @@
-use crate::ui::*;
 use crate::ui::Milliseconds;
+use crate::ui::*;
 use core::ffi::c_void;
 
 pub type RendererContext = Option<*mut c_void>;
@@ -21,7 +21,8 @@ pub struct PolymorphicRenderer {
     pub clear_screen: Option<fn(RendererContext)>,
     pub flush: Option<fn(RendererContext)>,
     pub move_cursor_to: Option<fn(RendererContext, i32, i32)>,
-    pub set_color: Option<fn(RendererContext, Color)>,
+    pub get_cursor_position: Option<fn(RendererContext, &mut i32, &mut i32)>,
+    pub set_color: Option<fn(RendererContext, Color, Color)>,
     pub write_str: Option<fn(RendererContext, *const c_char, usize)>,
     pub getch: Option<fn(RendererContext) -> Input>,
     pub sleep_ms: Option<fn(RendererContext, Milliseconds)>,
@@ -41,8 +42,16 @@ impl Renderer for PolymorphicRenderer {
             .map(|f| f(self.renderer_ctx, line, column));
     }
 
-    fn set_color(&mut self, color: Color) {
-        self.set_color.map(|f| f(self.renderer_ctx, color));
+    fn get_cursor_position(&mut self) -> (i32, i32) {
+        self.get_cursor_position.map_or((0, 0), |f| {
+            let mut result = (0, 0);
+            f(self.renderer_ctx, &mut result.0, &mut result.1);
+            result
+        })
+    }
+
+    fn set_color(&mut self, foreground: Color, background: Color) {
+        self.set_color.map(|f| f(self.renderer_ctx, foreground, background));
     }
 
     fn write_str<S: AsRef<str>>(&mut self, string: S) {

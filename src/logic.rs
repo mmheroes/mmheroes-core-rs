@@ -12,6 +12,25 @@ pub enum Action {
     _6,
 }
 
+impl std::convert::TryFrom<i16> for Action {
+    type Error = ();
+
+    fn try_from(value: i16) -> Result<Self, Self::Error> {
+        use Action::*;
+        match value {
+            -1 => Ok(Exit),
+            0 => Ok(_0),
+            1 => Ok(_1),
+            2 => Ok(_2),
+            3 => Ok(_3),
+            4 => Ok(_4),
+            5 => Ok(_5),
+            6 => Ok(_6),
+            _ => Err(())
+        }
+    }
+}
+
 pub enum GameState {
     Start,
     Terminal,
@@ -22,8 +41,73 @@ pub enum GameState {
     SceneRouter(Player, Location),
 }
 
-pub struct Player {
+macro_rules! define_characteristic {
+    ($name:ident) => {
+        #[repr(transparent)]
+        #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
+        struct $name(i16);
 
+        impl std::ops::AddAssign<i16> for $name {
+            fn add_assign(&mut self, rhs: i16) {
+                self.0 += rhs
+            }
+        }
+
+        impl std::ops::SubAssign<i16> for $name {
+            fn sub_assign(&mut self, rhs: i16) {
+                self.0 -= rhs
+            }
+        }
+    };
+}
+
+define_characteristic!(BrainLevel);
+define_characteristic!(StaminaLevel);
+define_characteristic!(CharismaLevel);
+
+pub struct Player {
+    // subject: []
+    god_mode: bool,
+    garlic: i16,
+    has_mmheroes_floppy: bool,
+    has_internet: bool,
+    is_invited: bool,
+    inception: bool,
+    employed_at_terkom: bool,
+    got_stipend: bool,
+    has_ticket: bool,
+    knows_djug: bool,
+
+    brain: BrainLevel,
+    stamina: StaminaLevel,
+    charisma: CharismaLevel,
+    exams_left: i16,
+}
+
+impl Player {
+    fn new(
+        god_mode: bool,
+        brain: BrainLevel,
+        stamina: StaminaLevel,
+        charisma: CharismaLevel,
+    ) -> Player {
+        Player {
+            god_mode: false,
+            garlic: 0,
+            has_mmheroes_floppy: false,
+            has_internet: false,
+            is_invited: false,
+            inception: false,
+            employed_at_terkom: false,
+            got_stipend: false,
+            has_ticket: false,
+            knows_djug: false,
+            brain,
+            stamina,
+            charisma,
+            exams_left: 0,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
@@ -32,7 +116,7 @@ pub enum Location {
     Punk,
     Mausoleum,
     ComputerClass,
-    Pomi,
+    PDMI,
 }
 
 /// The game mode selector.
@@ -121,7 +205,7 @@ impl Game {
                     5
                 }
                 GameMode::Normal => {
-                    self.state = Ding( self.initialize_player(Action::_0 /* random student */));
+                    self.state = Ding(self.initialize_player(Action::_0 /* random student */));
                     // Ding screen. Press any key to continue.
                     1
                 }
@@ -143,11 +227,42 @@ impl Game {
 
     fn initialize_player(&mut self, parameters: Action) -> Player {
         match parameters {
-            Action::_0 => todo!("random student"),
-            Action::_1 => todo!("clever student"),
-            Action::_2 => todo!("impudent student"),
-            Action::_3 => todo!("sociable student"),
-            _ => unreachable!("invalid state, expected value 0..=4"),
+            // Average student
+            Action::_0 => Player::new(
+                false,
+                BrainLevel(self.rng.random_number_in_range(4..7) as i16),
+                StaminaLevel(self.rng.random_number_in_range(4..7) as i16),
+                CharismaLevel(self.rng.random_number_in_range(4..7) as i16),
+            ),
+            // Clever student
+            Action::_1 => Player::new(
+                false,
+                BrainLevel(self.rng.random_number_in_range(5..10) as i16),
+                StaminaLevel(self.rng.random_number_in_range(2..5) as i16),
+                CharismaLevel(self.rng.random_number_in_range(2..5) as i16),
+            ),
+            // Impudent student
+            Action::_2 => Player::new(
+                false,
+                BrainLevel(self.rng.random_number_in_range(2..5) as i16),
+                StaminaLevel(self.rng.random_number_in_range(5..10) as i16),
+                CharismaLevel(self.rng.random_number_in_range(2..5) as i16),
+            ),
+            // Sociable student
+            Action::_3 => Player::new(
+                false,
+                BrainLevel(self.rng.random_number_in_range(2..5) as i16),
+                StaminaLevel(self.rng.random_number_in_range(2..5) as i16),
+                CharismaLevel(self.rng.random_number_in_range(5..10) as i16),
+            ),
+            // God
+            Action::_4 => Player::new(
+                false,
+                BrainLevel(30),
+                StaminaLevel(30),
+                CharismaLevel(30),
+            ),
+            _ => panic!("invalid state, expected action from 0 to 4."),
         }
     }
 
