@@ -7,14 +7,20 @@
 /* -------------------------------------------------------------------------- */
 
 #include <stdint.h>
+#include <stdbool.h>
+
+#define MMHEROES_NUM_DAYS 6
+
+#define MMHEROES_NUM_SUBJECTS 6
 
 typedef enum {
   MMHEROES_Color_Black = 0,
+  MMHEROES_Color_Yellow = 3,
   MMHEROES_Color_White = 7,
   MMHEROES_Color_Gray = 8,
   MMHEROES_Color_Red = 9,
   MMHEROES_Color_Green = 10,
-  MMHEROES_Color_Yellow = 11,
+  MMHEROES_Color_YellowBright = 11,
   MMHEROES_Color_Cyan = 14,
   MMHEROES_Color_WhiteBright = 15,
 } MMHEROES_Color;
@@ -55,6 +61,8 @@ typedef enum {
 
 typedef void *MMHEROES_RendererContext;
 
+typedef const void *MMHEROES_OpaqueError;
+
 typedef int32_t MMHEROES_Milliseconds;
 
 /**
@@ -69,23 +77,35 @@ typedef struct {
    * the window object.
    */
   MMHEROES_RendererContext renderer_ctx;
-  void (*clear_screen)(MMHEROES_RendererContext);
-  void (*flush)(MMHEROES_RendererContext);
-  void (*move_cursor_to)(MMHEROES_RendererContext, int32_t, int32_t);
-  void (*get_cursor_position)(MMHEROES_RendererContext, int32_t*, int32_t*);
-  void (*set_color)(MMHEROES_RendererContext, MMHEROES_Color, MMHEROES_Color);
-  void (*write_str)(MMHEROES_RendererContext, const char*, uintptr_t);
-  MMHEROES_Input (*getch)(MMHEROES_RendererContext);
-  void (*sleep_ms)(MMHEROES_RendererContext, MMHEROES_Milliseconds);
+  /**
+   * If an error occurred, these functions should store the error in the last
+   * parameter and return `false`.
+   * Otherwise, the last parameter is not touched, and `true` is returned.
+   */
+  bool (*clear_screen)(MMHEROES_RendererContext, MMHEROES_OpaqueError*);
+  bool (*flush)(MMHEROES_RendererContext, MMHEROES_OpaqueError*);
+  bool (*move_cursor_to)(MMHEROES_RendererContext, int32_t, int32_t, MMHEROES_OpaqueError*);
+  bool (*get_cursor_position)(MMHEROES_RendererContext, int32_t*, int32_t*, MMHEROES_OpaqueError*);
+  bool (*set_color)(MMHEROES_RendererContext, MMHEROES_Color, MMHEROES_Color, MMHEROES_OpaqueError*);
+  bool (*write_str)(MMHEROES_RendererContext, const char*, uintptr_t, MMHEROES_OpaqueError*);
+  bool (*getch)(MMHEROES_RendererContext, MMHEROES_Input*, MMHEROES_OpaqueError*);
+  bool (*sleep_ms)(MMHEROES_RendererContext, MMHEROES_Milliseconds, MMHEROES_OpaqueError*);
 } MMHEROES_PolymorphicRenderer;
 
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
 
-void mmheroes_run_game(MMHEROES_PolymorphicRenderer *renderer,
+/**
+ * Run the game. If any of the functions in the renderer return an error,
+ * the game stops and the error is returned via the last argument. Also,
+ * `false` is returned. If the game has successfully completed, `true`
+ * is returned.
+ */
+bool mmheroes_run_game(MMHEROES_PolymorphicRenderer *renderer,
                        MMHEROES_GameMode mode,
-                       uint64_t seed);
+                       uint64_t seed,
+                       MMHEROES_OpaqueError *error);
 
 #ifdef __cplusplus
 } // extern "C"

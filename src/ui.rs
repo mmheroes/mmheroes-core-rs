@@ -4,25 +4,15 @@ use crate::logic::*;
 #[repr(C)]
 pub enum Color {
     Black = 0,
+    Yellow = 3,
     White = 7,
     Gray = 8,
     Red = 9,
     Green = 10,
-    Yellow = 11,
+    YellowBright = 11,
     Cyan = 14,
     WhiteBright = 15,
 }
-
-pub const ALL_COLORS: [Color; 8] = [
-    Color::Black,
-    Color::White,
-    Color::Gray,
-    Color::Red,
-    Color::Green,
-    Color::Yellow,
-    Color::Cyan,
-    Color::WhiteBright,
-];
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -34,15 +24,54 @@ pub enum Input {
     EOF,
 }
 
+impl Default for Input {
+    fn default() -> Self {
+        Input::EOF
+    }
+}
+
 pub trait Renderer {
-    fn clear_screen(&mut self);
-    fn flush(&mut self);
-    fn move_cursor_to(&mut self, line: i32, column: i32);
-    fn get_cursor_position(&mut self) -> (i32, i32);
-    fn set_color(&mut self, foreground: Color, background: Color);
-    fn write_str<S: AsRef<str>>(&mut self, string: S);
-    fn getch(&mut self) -> Input;
-    fn sleep_ms(&mut self, ms: Milliseconds);
+    type Error;
+    fn clear_screen(&mut self) -> Result<(), Self::Error>;
+    fn flush(&mut self) -> Result<(), Self::Error>;
+    fn write_str(&mut self, s: &str) -> Result<(), Self::Error>;
+    fn move_cursor_to(&mut self, line: i32, column: i32) -> Result<(), Self::Error>;
+    fn get_cursor_position(&mut self) -> Result<(i32, i32), Self::Error>;
+    fn set_color(&mut self, foreground: Color, background: Color) -> Result<(), Self::Error>;
+    fn getch(&mut self) -> Result<Input, Self::Error>;
+    fn sleep_ms(&mut self, ms: Milliseconds) -> Result<(), Self::Error>;
+
+    fn write_fmt(&mut self, fmt: core::fmt::Arguments) -> Result<(), Self::Error> {
+        use core::fmt::{write as fmt_write, Error as FmtError, Result as FmtResult, Write};
+
+        // Create a shim which translates a Renderer to a core::fmt::Write and saves
+        // off renderer errors. instead of discarding them
+        struct Adaptor<'a, T: Renderer + ?Sized + 'a> {
+            inner: &'a mut T,
+            error: Result<(), T::Error>,
+        }
+
+        impl<T: Renderer + ?Sized> Write for Adaptor<'_, T> {
+            fn write_str(&mut self, s: &str) -> FmtResult {
+                match self.inner.write_str(s) {
+                    Ok(()) => Ok(()),
+                    Err(e) => {
+                        self.error = Err(e);
+                        Err(FmtError)
+                    }
+                }
+            }
+        }
+
+        let mut output = Adaptor {
+            inner: self,
+            error: Ok(()),
+        };
+        match fmt_write(&mut output, fmt) {
+            Ok(()) => Ok(()),
+            Err(..) => Err(output.error.expect_err("formatter error")),
+        }
+    }
 }
 
 #[repr(transparent)]
@@ -59,90 +88,96 @@ impl<'r, R: Renderer> GameUI<'r, R> {
         Self { renderer, game }
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> Result<(), R::Error> {
         loop {
             use GameState::*;
-            self.renderer.clear_screen();
+            self.renderer.clear_screen()?;
             let action = match self.game.state() {
                 Start => Action::_0,
                 Terminal => break,
-                Intro => display_intro(self.renderer),
-                InitialParameters => display_initial_parameters(self.renderer, self.game.mode()),
-                Ding(_) => display_ding(self.renderer),
+                Intro => display_intro(self.renderer)?,
+                InitialParameters => display_initial_parameters(self.renderer, self.game.mode())?,
+                Ding(_) => display_ding(self.renderer)?,
                 GameState::Timetable(player, timetable) => {
-                    display_timetable(self.renderer, timetable)
+                    display_timetable(self.renderer, timetable)?
                 }
-                SceneRouter(player, location) => display_scene_router(self.renderer, *location),
+                SceneRouter(player, location) => display_scene_router(self.renderer, *location)?,
             };
             self.game.perform_action(action);
         }
+        Ok(())
     }
 }
 
-fn sleep(r: &mut impl Renderer, ms: Milliseconds) {
-    r.flush();
-    r.sleep_ms(ms);
+fn sleep<R: Renderer>(r: &mut R, ms: Milliseconds) -> Result<(), R::Error> {
+    r.flush()?;
+    r.sleep_ms(ms)
 }
 
-fn wait_for_any_key(r: &mut impl Renderer) -> Action {
-    r.move_cursor_to(23, 0);
-    r.set_color(Color::Yellow, Color::Black);
-    r.write_str("Нажми любую клавишу ...");
-    r.flush();
-    if let Input::EOF = r.getch() {
-        Action::Exit
+fn wait_for_any_key<R: Renderer>(r: &mut R) -> Result<Action, R::Error> {
+    r.move_cursor_to(23, 0)?;
+    r.set_color(Color::YellowBright, Color::Black)?;
+    write!(r, "Нажми любую клавишу ...")?;
+    r.flush()?;
+    if let Input::EOF = r.getch()? {
+        Ok(Action::Exit)
     } else {
-        Action::_0
+        Ok(Action::_0)
     }
 }
 
-fn display_intro(r: &mut impl Renderer) -> Action {
-    r.set_color(Color::Gray, Color::Black);
-    r.write_str("                                                Нам понятен этот смех\n");
-    r.write_str("                                                Не попавших на Мат-Мех\n");
-    r.write_str("                                                  (надпись на парте)\n");
-    r.write_str("\n\n\n");
-    r.set_color(Color::WhiteBright, Color::Black);
-    r.write_str(" H H  EEE  RR    O   EEE  SS       M   M  A   A TTTTT       M   M  EEE  X   X\n");
-    r.write_str(" H H  E    R R  O O  E   S         MM MM  AAAAA   T         MM MM    E   X X\n");
-    r.write_str(" HHH  EE   RR   O O  EE   S    OF  M M M  A   A   T    &&&  M M M   EE    X\n");
-    r.write_str(" H H  E    R R  O O  E     S       M   M   A A    T         M   M    E   X X\n");
-    r.write_str(" H H  EEE  R R   O   EEE SS        M   M    A     T         M   E  EEE  X   X\n");
-    r.write_str("\n\n");
-    r.set_color(Color::Red, Color::Black);
-    r.write_str("                             ГЕРОИ МАТА И МЕХА ;)\n");
-    r.write_str("\n\n");
-    r.set_color(Color::Cyan, Color::Black);
-    r.write_str("(P) CrWMM Development Team, 2001.\n");
-    r.write_str("Версия gamma3.14.\n");
-    r.write_str("Загляните на нашу страничку: mmheroes.chat.ru !\n");
+fn display_intro<R: Renderer>(r: &mut R) -> Result<Action, R::Error> {
+    r.set_color(Color::Gray, Color::Black)?;
+    writeln!(r, "                                                Нам понятен этот смех")?;
+    writeln!(r, "                                                Не попавших на Мат-Мех")?;
+    writeln!(r, "                                                  (надпись на парте)")?;
+    writeln!(r)?;
+    writeln!(r)?;
+    writeln!(r)?;
+    r.set_color(Color::WhiteBright, Color::Black)?;
+    writeln!(r, " H H  EEE  RR    O   EEE  SS       M   M  A   A TTTTT       M   M  EEE  X   X")?;
+    writeln!(r, " H H  E    R R  O O  E   S         MM MM  AAAAA   T         MM MM    E   X X")?;
+    writeln!(r, " HHH  EE   RR   O O  EE   S    OF  M M M  A   A   T    &&&  M M M   EE    X")?;
+    writeln!(r, " H H  E    R R  O O  E     S       M   M   A A    T         M   M    E   X X")?;
+    writeln!(r, " H H  EEE  R R   O   EEE SS        M   M    A     T         M   E  EEE  X   X")?;
+    writeln!(r)?;
+    writeln!(r)?;
+    writeln!(r)?;
+    r.set_color(Color::Red, Color::Black)?;
+    writeln!(r, "                             ГЕРОИ МАТА И МЕХА ;)")?;
+    writeln!(r)?;
+    writeln!(r)?;
+    r.set_color(Color::Cyan, Color::Black)?;
+    writeln!(r, "(P) CrWMM Development Team, 2001.")?;
+    writeln!(r, "Версия gamma3.14.")?;
+    writeln!(r, "Загляните на нашу страничку: mmheroes.chat.ru !")?;
     wait_for_any_key(r)
 }
 
-fn dialog(r: &mut impl Renderer, options: &[(&str, Color)]) -> Action {
-    use std::convert::{TryFrom, TryInto};
+fn dialog<R: Renderer>(r: &mut R, options: &[(&str, Color)]) -> Result<Action, R::Error> {
+    use core::convert::{TryFrom, TryInto};
 
     let options_count: i16 = options.len().try_into().expect("Too many options given!");
 
     let mut current_choice = 0i16;
-    let start = r.get_cursor_position();
+    let start = r.get_cursor_position()?;
     loop {
         let mut chosen_line_end_position = start;
         for (i, &(name, color)) in options.iter().enumerate() {
             if i == current_choice as usize {
-                r.set_color(Color::Black, Color::White);
+                r.set_color(Color::Black, Color::White)?;
             } else {
-                r.set_color(color, Color::Black);
+                r.set_color(color, Color::Black)?;
             }
-            r.write_str(name);
+            write!(r, "{}", name)?;
             if i == current_choice as usize {
-                chosen_line_end_position = r.get_cursor_position();
+                chosen_line_end_position = r.get_cursor_position()?;
             }
-            r.write_str("\n");
+            writeln!(r)?;
         }
-        r.move_cursor_to(chosen_line_end_position.0, chosen_line_end_position.1);
+        r.move_cursor_to(chosen_line_end_position.0, chosen_line_end_position.1)?;
 
-        match r.getch() {
+        match r.getch()? {
             Input::KeyDown => {
                 current_choice = (options_count + current_choice + 1) % options_count;
             }
@@ -150,19 +185,20 @@ fn dialog(r: &mut impl Renderer, options: &[(&str, Color)]) -> Action {
                 current_choice = (options_count + current_choice - 1) % options_count;
             }
             Input::Enter => {
-                return Action::try_from(current_choice).expect("Unexpected action number")
+                return Ok(Action::try_from(current_choice).expect("Unexpected action number"))
             }
             Input::Other => (),
-            Input::EOF => return Action::Exit,
+            Input::EOF => return Ok(Action::Exit),
         }
-        r.move_cursor_to(start.0, start.1);
+        r.move_cursor_to(start.0, start.1)?;
     }
 }
 
-fn display_initial_parameters(r: &mut impl Renderer, mode: GameMode) -> Action {
+fn display_initial_parameters<R: Renderer>(r: &mut R, mode: GameMode) -> Result<Action, R::Error> {
     debug_assert!(mode == GameMode::God || mode == GameMode::SelectInitialParameters);
-    r.set_color(Color::White, Color::Black);
-    r.write_str("Выбери начальные параметры своего \"героя\":\n\n");
+    r.set_color(Color::White, Color::Black)?;
+    writeln!(r, "Выбери начальные параметры своего \"героя\":")?;
+    writeln!(r)?;
 
     let options = &[
         ("Случайный студент", Color::Cyan),
@@ -175,44 +211,129 @@ fn display_initial_parameters(r: &mut impl Renderer, mode: GameMode) -> Action {
     dialog(
         r,
         if mode == GameMode::God {
-            options
+            &options[..]
         } else {
             &options[..(options.len() - 1)]
         },
     )
 }
 
-fn display_ding(r: &mut impl Renderer) -> Action {
-    r.set_color(Color::Green, Color::Black);
-    r.write_str("ДЗИНЬ!\n");
-    sleep(r, Milliseconds(500));
-    r.set_color(Color::Yellow, Color::Black);
-    r.write_str("ДДДЗЗЗЗЗИИИИИИННННННЬ !!!!\n");
-    sleep(r, Milliseconds(700));
-    r.set_color(Color::Red, Color::Black);
-    r.write_str("ДДДДДДЗЗЗЗЗЗЗЗЗЗЗЗЗИИИИИИИИИИННННННННННННЬ !!!!!!!!!!\n");
-    sleep(r, Milliseconds(1000));
-    r.set_color(Color::White, Color::Black);
-    r.write_str("Ты просыпаешься от звонка будильника 22-го мая в 8:00.\n");
-    r.write_str("Неожиданно ты осознаешь, что началась зачетная неделя,\n");
-    r.write_str("а твоя готовность к этому моменту практически равна нулю.\n");
-    r.write_str("Натягивая на себя скромное одеяние студента,\n");
-    r.write_str("ты всматриваешься в заботливо оставленное соседом на стене\n");
-    r.write_str("расписание: когда и где можно найти искомого препода ?\n");
+fn display_ding<R: Renderer>(r: &mut R) -> Result<Action, R::Error> {
+    r.set_color(Color::Green, Color::Black)?;
+    writeln!(r, "ДЗИНЬ!")?;
+    sleep(r, Milliseconds(500))?;
+    r.set_color(Color::YellowBright, Color::Black)?;
+    writeln!(r, "ДДДЗЗЗЗЗИИИИИИННННННЬ !!!!")?;
+    sleep(r, Milliseconds(700))?;
+    r.set_color(Color::Red, Color::Black)?;
+    writeln!(r, "ДДДДДДЗЗЗЗЗЗЗЗЗЗЗЗЗИИИИИИИИИИННННННННННННЬ !!!!!!!!!!")?;
+    sleep(r, Milliseconds(1000))?;
+    r.set_color(Color::White, Color::Black)?;
+    writeln!(r, "Ты просыпаешься от звонка будильника 22-го мая в 8:00.")?;
+    writeln!(r, "Неожиданно ты осознаешь, что началась зачетная неделя,")?;
+    writeln!(r, "а твоя готовность к этому моменту практически равна нулю.")?;
+    writeln!(r, "Натягивая на себя скромное одеяние студента,")?;
+    writeln!(r, "ты всматриваешься в заботливо оставленное соседом на стене")?;
+    writeln!(r, "расписание: когда и где можно найти искомого препода ?")?;
     wait_for_any_key(r)
 }
 
-fn display_timetable(r: &mut impl Renderer, timetable: &Timetable) -> Action {
-    todo!()
+fn output_remaining_problems<R: Renderer>(
+    r: &mut R,
+    number_of_problems: u8,
+) -> Result<(), R::Error> {
+    let (line, column) = r.get_cursor_position()?;
+    r.set_color(Color::White, Color::Black)?;
+    write!(r, "Осталось")?;
+    r.move_cursor_to(line + 1, column)?;
+    r.set_color(Color::WhiteBright, Color::Black)?;
+    // TODO: Output the actual number of remaining problems
+    write!(r, "{}", number_of_problems)?;
+    r.set_color(Color::White, Color::Black)?;
+    match number_of_problems {
+        1 => write!(r, " задание"),
+        2..=4 => write!(r, " задания"),
+        _ => write!(r, " заданий"),
+    }
 }
 
-fn display_scene_router(r: &mut impl Renderer, location: Location) -> Action {
-    todo!()
+fn output_remaining_exams<R: Renderer>(r: &mut R, number_of_exams: u8) -> Result<(), R::Error> {
+    assert!(number_of_exams as usize <= NUM_SUBJECTS);
+
+    let mut output = |a, b| {
+        r.set_color(Color::White, Color::Black)?;
+        write!(r, "{} ", a)?;
+        r.set_color(Color::YellowBright, Color::Black)?;
+        write!(r, "{}", number_of_exams)?;
+        r.set_color(Color::White, Color::Black)?;
+        write!(r, " {}", b)
+    };
+
+    match number_of_exams {
+        0 => {
+            r.set_color(Color::WhiteBright, Color::Black)?;
+            return write!(r, "Все уже сдано!");
+        }
+        1 => output("Остался", "зачет!"),
+        2..=4 => output("Осталось", "зачета."),
+        _ => output("Осталось", "зачетов."),
+    }
 }
 
-#[cfg(test)]
-mod tests {
+fn display_timetable<R: Renderer>(
+    r: &mut R,
+    timetable: &timetable::Timetable,
+) -> Result<Action, R::Error> {
+    r.set_color(Color::Cyan, Color::Black)?;
+    {
+        let mut column = 23;
+        for day in timetable.days() {
+            r.move_cursor_to(0, column)?;
+            write!(r, "{}", day.date())?;
+            column += 7;
+        }
+    }
+    {
+        let mut line = 1;
+        for (subject, subject_info) in SUBJECTS.iter() {
+            r.move_cursor_to(line, 0)?;
+            r.set_color(Color::Green, Color::Black)?;
+            writeln!(r, "{}", subject_info.professor())?;
+            r.set_color(Color::Cyan, Color::Black)?;
+            write!(r, "{}", subject_info.name())?;
 
-    #[test]
-    fn test() {}
+            let mut column = 23;
+            for day in timetable.days() {
+                r.move_cursor_to(line, column)?;
+
+                // TODO: Set a different color for today
+                r.set_color(Color::White, Color::Black)?;
+                if let Some(exam) = day.exam(*subject) {
+                    write!(r, "{}", exam.location())?;
+                    r.move_cursor_to(line + 1, column)?;
+                    write!(r, "{}-{}", exam.from(), exam.to())?;
+                } else {
+                    // TODO: Set a different color for today
+                    r.set_color(Color::Black, Color::Gray)?;
+                    write!(r, "      ")?;
+                    r.move_cursor_to(line + 1, column)?;
+                    write!(r, "      ")?;
+                }
+                column += 7;
+            }
+            r.move_cursor_to(line, column + 4)?;
+            // TODO: Output the actual number of remaining problems
+            output_remaining_problems(r, subject_info.required_problems())?;
+            line += 3;
+        }
+    }
+
+    r.move_cursor_to(22, 0)?;
+    // TODO: Output the actual number of remaining exams
+    output_remaining_exams(r, 6)?;
+    wait_for_any_key(r)
+}
+
+fn display_scene_router<R: Renderer>(r: &mut R, location: Location) -> Result<Action, R::Error> {
+    todo!()
 }

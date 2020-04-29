@@ -12,7 +12,7 @@ autogen_warning = """
 
 line_length = 80
 
-sys_includes = ["stdint.h"]
+sys_includes = ["stdint.h", "stdbool.h"]
 no_includes = true
 cpp_compat = true
 
@@ -21,3 +21,10 @@ prefix = "MMHEROES_"
 
 [enum]
 prefix_with_name = true
+
+# This is needed since we define the PolymorphicRenderer struct using macros.
+# Note that you need a rustc from a nightly toolchain.
+# The best way is to set the RUSTC environment variable to a nightly rustc
+# binary when running cbindgen.
+[parse.expand]
+crates = ["mmheroes_core"]
