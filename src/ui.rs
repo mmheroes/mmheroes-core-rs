@@ -257,7 +257,7 @@ fn output_remaining_problems<R: Renderer>(
     }
 }
 
-fn output_remaining_exams<R: Renderer>(r: &mut R, number_of_exams: u8) -> Result<(), R::Error> {
+fn output_remaining_exams<R: Renderer>(r: &mut R, number_of_exams: usize) -> Result<(), R::Error> {
     assert!(number_of_exams as usize <= NUM_SUBJECTS);
 
     let mut output = |a, b| {
@@ -280,57 +280,72 @@ fn output_remaining_exams<R: Renderer>(r: &mut R, number_of_exams: u8) -> Result
     }
 }
 
+const TIMETABLE_START_X: i32 = 0;
+const TIMETABLE_DAYS_START_X: i32 = 24;
+const TIMETABLE_START_Y: i32 = 1;
+const TIMETABLE_COLUMN_WIDTH: i32 = 7;
+const TIMETABLE_ROW_HEIGHT: i32 = 3;
+const TIMETABLE_REMAINING_PROBLEMS_X: i32 = 70;
+
+fn display_timetable_cell<R: Renderer>(
+    r: &mut R,
+    day: &Day,
+    subject: Subject,
+) -> Result<(), R::Error> {
+    let (line, column) = r.get_cursor_position()?;
+    // TODO: Set a different color for today
+    r.set_color(Color::White, Color::Black)?;
+    if let Some(exam) = day.exam(subject) {
+        write!(r, "{}", exam.location())?;
+        r.move_cursor_to(line + 1, column)?;
+        write!(r, "{}-{}", exam.from(), exam.to())
+    } else {
+        // TODO: Set a different color for today
+        r.set_color(Color::Black, Color::Gray)?;
+        write!(r, "      ")?;
+        r.move_cursor_to(line + 1, column)?;
+        write!(r, "      ")
+    }
+}
+
 fn display_timetable<R: Renderer>(
     r: &mut R,
     timetable: &timetable::Timetable,
 ) -> Result<Action, R::Error> {
-    r.set_color(Color::Cyan, Color::Black)?;
-    {
-        let mut column = 23;
-        for day in timetable.days() {
-            r.move_cursor_to(0, column)?;
-            write!(r, "{}", day.date())?;
-            column += 7;
+    for (i, (subject, subject_info)) in SUBJECTS.iter().enumerate() {
+        let line = (i as i32) * TIMETABLE_ROW_HEIGHT + TIMETABLE_START_Y;
+        r.move_cursor_to(line, TIMETABLE_START_X)?;
+        r.set_color(Color::Green, Color::Black)?;
+        writeln!(r, "{}", subject_info.professor())?;
+        r.move_cursor_to(line + 1, TIMETABLE_START_X)?;
+        r.set_color(Color::Cyan, Color::Black)?;
+        write!(r, "{}", subject_info.name())?;
+
+        for (j, day) in timetable.days().iter().enumerate() {
+            r.move_cursor_to(
+                line,
+                (j as i32) * TIMETABLE_COLUMN_WIDTH + TIMETABLE_DAYS_START_X,
+            )?;
+            display_timetable_cell(r, day, *subject)?;
         }
+
+        r.move_cursor_to(line, TIMETABLE_REMAINING_PROBLEMS_X)?;
+        // TODO: Output the actual number of remaining problems
+        output_remaining_problems(r, subject_info.required_problems())?;
     }
-    {
-        let mut line = 1;
-        for (subject, subject_info) in SUBJECTS.iter() {
-            r.move_cursor_to(line, 0)?;
-            r.set_color(Color::Green, Color::Black)?;
-            writeln!(r, "{}", subject_info.professor())?;
-            r.set_color(Color::Cyan, Color::Black)?;
-            write!(r, "{}", subject_info.name())?;
 
-            let mut column = 23;
-            for day in timetable.days() {
-                r.move_cursor_to(line, column)?;
-
-                // TODO: Set a different color for today
-                r.set_color(Color::White, Color::Black)?;
-                if let Some(exam) = day.exam(*subject) {
-                    write!(r, "{}", exam.location())?;
-                    r.move_cursor_to(line + 1, column)?;
-                    write!(r, "{}-{}", exam.from(), exam.to())?;
-                } else {
-                    // TODO: Set a different color for today
-                    r.set_color(Color::Black, Color::Gray)?;
-                    write!(r, "      ")?;
-                    r.move_cursor_to(line + 1, column)?;
-                    write!(r, "      ")?;
-                }
-                column += 7;
-            }
-            r.move_cursor_to(line, column + 4)?;
-            // TODO: Output the actual number of remaining problems
-            output_remaining_problems(r, subject_info.required_problems())?;
-            line += 3;
-        }
+    r.set_color(Color::Cyan, Color::Black)?;
+    for (i, day) in timetable.days().iter().enumerate() {
+        r.move_cursor_to(
+            0,
+            (i as i32) * TIMETABLE_COLUMN_WIDTH + TIMETABLE_DAYS_START_X,
+        )?;
+        write!(r, "{}", day.date())?;
     }
 
     r.move_cursor_to(22, 0)?;
     // TODO: Output the actual number of remaining exams
-    output_remaining_exams(r, 6)?;
+    output_remaining_exams(r, NUM_SUBJECTS)?;
     wait_for_any_key(r)
 }
 
