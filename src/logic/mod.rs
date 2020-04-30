@@ -3,8 +3,6 @@ pub use timetable::*;
 
 use core::fmt::{Display, Formatter};
 
-pub type Milliseconds = u32;
-
 #[derive(Copy, Clone, Debug)]
 pub enum Action {
     Exit = -1,
@@ -36,14 +34,35 @@ impl core::convert::TryFrom<i16> for Action {
     }
 }
 
-pub enum GameState {
+#[derive(Clone, Debug)]
+pub struct GameState {
+    player: Player,
+    timetable: timetable::Timetable,
+    location: Location,
+}
+
+impl GameState {
+    pub fn player(&self) -> &Player {
+        &self.player
+    }
+
+    pub fn timetable(&self) -> &timetable::Timetable {
+        &self.timetable
+    }
+
+    pub fn location(&self) -> Location {
+        self.location
+    }
+}
+
+pub enum GameScreen {
     Start,
     Terminal,
     Intro,
     InitialParameters,
     Ding(Player),
-    Timetable(Player, timetable::Timetable),
-    SceneRouter(Player, Location),
+    Timetable(GameState),
+    SceneRouter(GameState),
 }
 
 macro_rules! define_characteristic {
@@ -98,7 +117,7 @@ impl Player {
         charisma: CharismaLevel,
     ) -> Player {
         Player {
-            god_mode: false,
+            god_mode,
             garlic: 0,
             has_mmheroes_floppy: false,
             has_internet: false,
@@ -118,11 +137,11 @@ impl Player {
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum Location {
-    Dorm,
-    PUNK,
-    Mausoleum,
-    ComputerClass,
-    PDMI,
+    PUNK = 1,
+    PDMI = 2,
+    ComputerClass = 3,
+    Dorm = 4,
+    Mausoleum = 5,
 }
 
 impl Display for Location {
@@ -343,10 +362,10 @@ impl core::ops::Index<Subject> for Subjects {
     }
 }
 
-use GameState::*;
+use GameScreen::*;
 
 pub struct Game {
-    state: GameState,
+    screen: GameScreen,
     rng: crate::random::Rng,
     mode: GameMode,
 }
@@ -355,14 +374,14 @@ impl Game {
     pub fn new(mode: GameMode, seed: u64) -> Game {
         let rng = crate::random::Rng::new(seed);
         Game {
-            state: Start,
+            screen: Start,
             rng,
             mode,
         }
     }
 
-    pub fn state(&self) -> &GameState {
-        &self.state
+    pub fn screen(&self) -> &GameScreen {
+        &self.screen
     }
 
     pub fn mode(&self) -> GameMode {
@@ -371,16 +390,16 @@ impl Game {
 
     /// Accepts an action, returns the number of actions available in the updated state.
     pub fn perform_action(&mut self, action: Action) -> usize {
-        match &self.state {
+        match &self.screen {
             Start => {
-                self.state = Intro;
+                self.screen = Intro;
                 // Intro screen. Press any key to continue.
                 1
             }
             Terminal => 0,
             Intro => match self.mode {
                 GameMode::SelectInitialParameters => {
-                    self.state = InitialParameters;
+                    self.screen = InitialParameters;
                     // The player can choose from 4 initial states:
                     // - random student
                     // - clever student
@@ -389,7 +408,7 @@ impl Game {
                     4
                 }
                 GameMode::God => {
-                    self.state = InitialParameters;
+                    self.screen = InitialParameters;
                     // The player can choose from 5 initial states:
                     // - random student
                     // - clever student
@@ -399,26 +418,27 @@ impl Game {
                     5
                 }
                 GameMode::Normal => {
-                    self.state = Ding(self.initialize_player(Action::_0 /* random student */));
+                    self.screen = Ding(self.initialize_player(Action::_0 /* random student */));
                     // Ding screen. Press any key to continue.
                     1
                 }
             },
             InitialParameters => {
-                self.state = Ding(self.initialize_player(action));
+                self.screen = Ding(self.initialize_player(action));
                 // Ding screen. Press any key to continue.
                 1
             }
             Ding(player) => {
-                self.state = GameState::Timetable(
-                    player.clone(),
-                    timetable::Timetable::random(&mut self.rng),
-                );
+                self.screen = GameScreen::Timetable(GameState {
+                    player: player.clone(),
+                    timetable: timetable::Timetable::random(&mut self.rng),
+                    location: Location::Dorm
+                });
                 // Timetable screen. Press any key to continue.
                 1
             }
-            GameState::Timetable(player, timetable) => todo!(),
-            SceneRouter(player, location) => self.scene_router(player.clone(), *location, action),
+            Timetable(state) => self.make_scene_router(state.clone()),
+            SceneRouter(state) => self.handle_scene_router_action(state.clone(), action),
         }
     }
 
@@ -458,7 +478,18 @@ impl Game {
         }
     }
 
-    fn scene_router(&mut self, player: Player, location: Location, action: Action) -> usize {
+    fn make_scene_router(&mut self, state: GameState) -> usize {
+        // TODO: assert that no exam is in progress
+        match state.location {
+            Location::PDMI => todo!(),
+            Location::PUNK => todo!(),
+            Location::Mausoleum => todo!(),
+            Location::Dorm => todo!(),
+            Location::ComputerClass => todo!()
+        }
+    }
+
+    fn handle_scene_router_action(&mut self, state: GameState, action: Action) -> usize {
         todo!()
     }
 }

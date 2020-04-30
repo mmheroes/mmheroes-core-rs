@@ -105,18 +105,18 @@ impl<'r, R: Renderer> GameUI<'r, R> {
 
     pub fn run(&mut self) -> Result<(), R::Error> {
         loop {
-            use GameState::*;
+            use GameScreen::*;
             self.renderer.clear_screen()?;
-            let action = match self.game.state() {
+            let action = match self.game.screen() {
                 Start => Action::_0,
                 Terminal => break,
                 Intro => display_intro(self.renderer)?,
                 InitialParameters => display_initial_parameters(self.renderer, self.game.mode())?,
                 Ding(_) => display_ding(self.renderer)?,
-                GameState::Timetable(player, timetable) => {
-                    display_timetable(self.renderer, timetable)?
+                GameScreen::Timetable(state) => {
+                    display_timetable(self.renderer, state.timetable())?
                 }
-                SceneRouter(player, location) => display_scene_router(self.renderer, *location)?,
+                SceneRouter(state) => display_scene_router(self.renderer, state.location())?,
             };
             self.game.perform_action(action);
         }

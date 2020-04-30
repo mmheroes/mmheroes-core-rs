@@ -124,7 +124,7 @@ impl Day {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Timetable {
     days: [Day; NUM_DAYS],
 }
