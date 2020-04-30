@@ -176,7 +176,7 @@ fn dialog<R: Renderer>(r: &mut R, options: &[(&str, Color)]) -> Result<Action, R
             writeln!(r)?;
         }
         r.move_cursor_to(chosen_line_end_position.0, chosen_line_end_position.1)?;
-
+        r.flush()?;
         match r.getch()? {
             Input::KeyDown => {
                 current_choice = (options_count + current_choice + 1) % options_count;
