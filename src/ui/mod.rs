@@ -1,3 +1,6 @@
+pub mod recorded_input;
+pub use recorded_input::*;
+
 use crate::logic::*;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -32,13 +35,25 @@ impl Default for Input {
 
 pub trait Renderer {
     type Error;
+
     fn clear_screen(&mut self) -> Result<(), Self::Error>;
+
     fn flush(&mut self) -> Result<(), Self::Error>;
+
     fn write_str(&mut self, s: &str) -> Result<(), Self::Error>;
+
     fn move_cursor_to(&mut self, line: i32, column: i32) -> Result<(), Self::Error>;
+
+    /// Return the cursor position. This method not necessarily returns the actual cursor position.
+    /// For example, `RecordedInputRenderer` always returns `(0, 0)`.
+    /// Because of that, callers should not make decisions based on what this method returns.
+    /// It only should be used to save the position in order to move to it later.
     fn get_cursor_position(&mut self) -> Result<(i32, i32), Self::Error>;
+
     fn set_color(&mut self, foreground: Color, background: Color) -> Result<(), Self::Error>;
+
     fn getch(&mut self) -> Result<Input, Self::Error>;
+
     fn sleep_ms(&mut self, ms: Milliseconds) -> Result<(), Self::Error>;
 
     fn write_fmt(&mut self, fmt: core::fmt::Arguments) -> Result<(), Self::Error> {
