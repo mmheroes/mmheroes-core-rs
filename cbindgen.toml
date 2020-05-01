@@ -27,4 +27,4 @@ prefix_with_name = true
 # The best way is to set the RUSTC environment variable to a nightly rustc
 # binary when running cbindgen.
 [parse.expand]
-crates = ["mmheroes_core"]
+crates = ["mmheroes-core"]
