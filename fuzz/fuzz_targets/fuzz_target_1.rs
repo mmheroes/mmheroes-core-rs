@@ -16,7 +16,7 @@ fuzz_target!(|input: &[u8]| {
         }
     });
     let mut renderer = RecordedInputRenderer::new(structured_input);
-    let game = Game::new(GameMode::God, 0 /* TODO: Randomize seed */);
+    let game = Game::new(GameMode::God, 0);
     let mut runner = GameUI::new(&mut renderer, game);
     let _result = runner.run();
 });
