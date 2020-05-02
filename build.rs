@@ -47,6 +47,8 @@ fn regenerate_ios_files() -> Result<(), Error> {
     writeln!(output, "panic = \"abort\"")?;
     writeln!(output, "[profile.release]")?;
     writeln!(output, "panic = \"abort\"")?;
+    writeln!(output, "opt-level = 's'")?;
+    writeln!(output, "lto = true")?;
     writeln!(output)?;
 
     std::fs::write("iOS/Cargo.toml", output)?;

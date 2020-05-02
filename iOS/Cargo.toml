@@ -25,4 +25,6 @@ required-features = ["std"]
 panic = "abort"
 [profile.release]
 panic = "abort"
+opt-level = 's'
+lto = true
 
