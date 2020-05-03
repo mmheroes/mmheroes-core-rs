@@ -45,11 +45,11 @@ impl<I: Iterator<Item = Input>> Renderer for RecordedInputRenderer<I> {
         error_if_finished!(self)
     }
 
-    fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
+    fn write_str(&mut self, _s: &str) -> Result<(), Self::Error> {
         error_if_finished!(self)
     }
 
-    fn move_cursor_to(&mut self, line: i32, column: i32) -> Result<(), Self::Error> {
+    fn move_cursor_to(&mut self, _line: i32, _column: i32) -> Result<(), Self::Error> {
         error_if_finished!(self)
     }
 
@@ -57,7 +57,7 @@ impl<I: Iterator<Item = Input>> Renderer for RecordedInputRenderer<I> {
         error_if_finished!(self)
     }
 
-    fn set_color(&mut self, foreground: Color, background: Color) -> Result<(), Self::Error> {
+    fn set_color(&mut self, _foreground: Color, _background: Color) -> Result<(), Self::Error> {
         error_if_finished!(self)
     }
 
@@ -70,7 +70,7 @@ impl<I: Iterator<Item = Input>> Renderer for RecordedInputRenderer<I> {
         }
     }
 
-    fn sleep_ms(&mut self, ms: Milliseconds) -> Result<(), Self::Error> {
+    fn sleep_ms(&mut self, _ms: Milliseconds) -> Result<(), Self::Error> {
         error_if_finished!(self)
     }
 }

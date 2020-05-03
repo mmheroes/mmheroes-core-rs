@@ -1,8 +1,6 @@
 pub mod timetable;
 pub use timetable::*;
 
-use core::fmt::{Display, Formatter};
-
 #[derive(Copy, Clone, Debug)]
 pub enum Action {
     Exit = -1,
@@ -144,19 +142,6 @@ pub enum Location {
     Mausoleum = 5,
 }
 
-impl Display for Location {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        let name = match self {
-            Location::Dorm => "Общага",
-            Location::PUNK => "ПУНК",
-            Location::Mausoleum => "Мавзолей",
-            Location::ComputerClass => "Компы",
-            Location::PDMI => "ПОМИ",
-        };
-        f.write_fmt(format_args!("{}", name))
-    }
-}
-
 /// The game mode selector.
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 #[repr(C)]
@@ -179,19 +164,9 @@ pub enum GameMode {
     God,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum Gender {
-    Male,
-    Female,
-}
-
 #[derive(Debug)]
 #[allow(non_snake_case)] // TODO: Remove this
 pub struct SubjectInfo {
-    professor: &'static str,
-    professor_gender: Gender,
-    name: &'static str,
-    short_name: &'static str,
     required_problems: u8,
     exam_days: u16,
     exam_min_duration: Duration,
@@ -205,18 +180,6 @@ pub struct SubjectInfo {
 }
 
 impl SubjectInfo {
-    pub fn professor(&self) -> &'static str {
-        self.professor
-    }
-
-    pub fn name(&self) -> &'static str {
-        self.name
-    }
-
-    pub fn short_name(&self) -> &'static str {
-        self.short_name
-    }
-
     pub fn required_problems(&self) -> u8 {
         self.required_problems
     }
@@ -238,17 +201,12 @@ pub struct Subjects([(Subject, SubjectInfo); NUM_SUBJECTS]);
 
 impl Subjects {
     const fn new() -> Subjects {
-        use Gender::*;
         use Location::*;
         use Subject::*;
         Subjects([
             (
                 AlgebraAndNumberTheory,
                 SubjectInfo {
-                    professor: "Всемирнов М.А.",
-                    professor_gender: Male,
-                    name: "Алгебра и Т.Ч.",
-                    short_name: "АиТЧ",
                     required_problems: 12,
                     exam_days: 4,
                     exam_min_duration: Duration(2),
@@ -262,10 +220,6 @@ impl Subjects {
             (
                 Calculus,
                 SubjectInfo {
-                    professor: "Дубцов Е.С.",
-                    professor_gender: Male,
-                    name: "Мат. Анализ",
-                    short_name: "МатАн",
                     required_problems: 10,
                     exam_days: 4,
                     exam_min_duration: Duration(2),
@@ -279,10 +233,6 @@ impl Subjects {
             (
                 GeometryAndTopology,
                 SubjectInfo {
-                    professor: "Подкорытов С.С.",
-                    professor_gender: Male,
-                    name: "Геометрия и Топология",
-                    short_name: "ГиТ",
                     required_problems: 3,
                     exam_days: 2,
                     exam_min_duration: Duration(1),
@@ -296,12 +246,8 @@ impl Subjects {
             (
                 ComputerScience,
                 SubjectInfo {
-                    professor: "Климов А.А.",
-                    professor_gender: Male,
-                    name: "Информатика",
-                    short_name: "Инф",
                     required_problems: 2,
-                    exam_days: 2,
+                    exam_days: 2, // FIXME: May be 3.
                     exam_min_duration: Duration(1),
                     exam_max_duration: Duration(2),
                     exam_places: [ComputerClass, ComputerClass, ComputerClass],
@@ -313,10 +259,6 @@ impl Subjects {
             (
                 English,
                 SubjectInfo {
-                    professor: "Влащенко Н.П.",
-                    professor_gender: Female,
-                    name: "English",
-                    short_name: "ИнЯз",
                     required_problems: 3,
                     exam_days: 2,
                     exam_min_duration: Duration(2),
@@ -330,10 +272,6 @@ impl Subjects {
             (
                 PhysicalEducation,
                 SubjectInfo {
-                    professor: "Альбинский Е.Г.",
-                    professor_gender: Male,
-                    name: "Физ-ра",
-                    short_name: "Физ-ра",
                     required_problems: 1,
                     exam_days: 2,
                     exam_min_duration: Duration(1),
@@ -432,13 +370,19 @@ impl Game {
                 self.screen = GameScreen::Timetable(GameState {
                     player: player.clone(),
                     timetable: timetable::Timetable::random(&mut self.rng),
-                    location: Location::Dorm
+                    location: Location::Dorm,
                 });
                 // Timetable screen. Press any key to continue.
                 1
             }
-            Timetable(state) => self.make_scene_router(state.clone()),
-            SceneRouter(state) => self.handle_scene_router_action(state.clone(), action),
+            Timetable(state) => {
+                let state = state.clone();
+                self.make_scene_router(state)
+            }
+            SceneRouter(state) => {
+                let state = state.clone();
+                self.handle_scene_router_action(state, action)
+            }
         }
     }
 
@@ -484,8 +428,11 @@ impl Game {
             Location::PDMI => todo!(),
             Location::PUNK => todo!(),
             Location::Mausoleum => todo!(),
-            Location::Dorm => todo!(),
-            Location::ComputerClass => todo!()
+            Location::Dorm => {
+                self.screen = GameScreen::SceneRouter(state);
+                9
+            }
+            Location::ComputerClass => todo!(),
         }
     }
 

@@ -2,19 +2,31 @@ pub mod recorded_input;
 pub use recorded_input::*;
 
 use crate::logic::*;
+use crate::util::StackAllocatedVector;
+
+use core::fmt::Display;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 #[repr(C)]
 pub enum Color {
     Black = 0,
     Yellow = 3,
+    Cyan = 6,
     White = 7,
     Gray = 8,
     Red = 9,
     Green = 10,
     YellowBright = 11,
-    Cyan = 14,
+    BlueBright = 12,
+    MagentaBright = 13,
+    CyanBright = 14,
     WhiteBright = 15,
+}
+
+impl Default for Color {
+    fn default() -> Self {
+        Color::White
+    }
 }
 
 #[repr(C)]
@@ -116,7 +128,7 @@ impl<'r, R: Renderer> GameUI<'r, R> {
                 GameScreen::Timetable(state) => {
                     display_timetable(self.renderer, state.timetable())?
                 }
-                SceneRouter(state) => display_scene_router(self.renderer, state.location())?,
+                SceneRouter(state) => display_scene_router(self.renderer, state)?,
             };
             self.game.perform_action(action);
         }
@@ -162,7 +174,7 @@ fn display_intro<R: Renderer>(r: &mut R) -> Result<Action, R::Error> {
     writeln!(r, "                             ГЕРОИ МАТА И МЕХА ;)")?;
     writeln!(r)?;
     writeln!(r)?;
-    r.set_color(Color::Cyan, Color::Black)?;
+    r.set_color(Color::CyanBright, Color::Black)?;
     writeln!(r, "(P) CrWMM Development Team, 2001.")?;
     writeln!(r, "Версия gamma3.14.")?;
     writeln!(r, "Загляните на нашу страничку: mmheroes.chat.ru !")?;
@@ -179,6 +191,7 @@ fn dialog<R: Renderer>(r: &mut R, options: &[(&str, Color)]) -> Result<Action, R
     loop {
         let mut chosen_line_end_position = start;
         for (i, &(name, color)) in options.iter().enumerate() {
+            r.move_cursor_to(start.0 + i as i32, start.1)?;
             if i == current_choice as usize {
                 r.set_color(Color::Black, Color::White)?;
             } else {
@@ -188,7 +201,6 @@ fn dialog<R: Renderer>(r: &mut R, options: &[(&str, Color)]) -> Result<Action, R
             if i == current_choice as usize {
                 chosen_line_end_position = r.get_cursor_position()?;
             }
-            writeln!(r)?;
         }
         r.move_cursor_to(chosen_line_end_position.0, chosen_line_end_position.1)?;
         r.flush()?;
@@ -216,11 +228,11 @@ fn display_initial_parameters<R: Renderer>(r: &mut R, mode: GameMode) -> Result<
     writeln!(r)?;
 
     let options = &[
-        ("Случайный студент", Color::Cyan),
-        ("Шибко умный", Color::Cyan),
-        ("Шибко наглый", Color::Cyan),
-        ("Шибко общительный", Color::Cyan),
-        ("GOD-режим", Color::Cyan),
+        ("Случайный студент", Color::CyanBright),
+        ("Шибко умный", Color::CyanBright),
+        ("Шибко наглый", Color::CyanBright),
+        ("Шибко общительный", Color::CyanBright),
+        ("GOD-режим", Color::CyanBright),
     ];
 
     dialog(
@@ -331,10 +343,10 @@ fn display_timetable<R: Renderer>(
         let line = (i as i32) * TIMETABLE_ROW_HEIGHT + TIMETABLE_START_Y;
         r.move_cursor_to(line, TIMETABLE_START_X)?;
         r.set_color(Color::Green, Color::Black)?;
-        writeln!(r, "{}", subject_info.professor())?;
+        writeln!(r, "{}", professor_name(*subject))?;
         r.move_cursor_to(line + 1, TIMETABLE_START_X)?;
-        r.set_color(Color::Cyan, Color::Black)?;
-        write!(r, "{}", subject_info.name())?;
+        r.set_color(Color::CyanBright, Color::Black)?;
+        write!(r, "{}", subject_name(*subject))?;
 
         for (j, day) in timetable.days().iter().enumerate() {
             r.move_cursor_to(
@@ -349,7 +361,7 @@ fn display_timetable<R: Renderer>(
         output_remaining_problems(r, subject_info.required_problems())?;
     }
 
-    r.set_color(Color::Cyan, Color::Black)?;
+    r.set_color(Color::CyanBright, Color::Black)?;
     for (i, day) in timetable.days().iter().enumerate() {
         r.move_cursor_to(
             0,
@@ -364,6 +376,190 @@ fn display_timetable<R: Renderer>(
     wait_for_any_key(r)
 }
 
-fn display_scene_router<R: Renderer>(r: &mut R, location: Location) -> Result<Action, R::Error> {
-    todo!()
+pub fn professor_name(subject: Subject) -> &'static str {
+    match subject {
+        Subject::AlgebraAndNumberTheory => "Всемирнов М.А.",
+        Subject::Calculus => "Дубцов Е.С.",
+        Subject::GeometryAndTopology => "Подкорытов С.С.",
+        Subject::ComputerScience => "Климов А.А.",
+        Subject::English => "Влащенко Н.П.",
+        Subject::PhysicalEducation => "Альбинский Е.Г.",
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Gender {
+    Male,
+    Female,
+}
+
+pub fn professor_gender(subject: Subject) -> Gender {
+    match subject {
+        Subject::AlgebraAndNumberTheory => Gender::Male,
+        Subject::Calculus => Gender::Male,
+        Subject::GeometryAndTopology => Gender::Male,
+        Subject::ComputerScience => Gender::Male,
+        Subject::English => Gender::Female,
+        Subject::PhysicalEducation => Gender::Male,
+    }
+}
+
+pub fn subject_name(subject: Subject) -> &'static str {
+    match subject {
+        Subject::AlgebraAndNumberTheory => "Алгебра и Т.Ч.",
+        Subject::Calculus => "Мат. Анализ",
+        Subject::GeometryAndTopology => "Геометрия и Топология",
+        Subject::ComputerScience => "Информатика",
+        Subject::English => "English",
+        Subject::PhysicalEducation => "Физ-ра",
+    }
+}
+
+pub fn subject_short_name(subject: Subject) -> &'static str {
+    match subject {
+        Subject::AlgebraAndNumberTheory => "АиТЧ",
+        Subject::Calculus => "МатАн",
+        Subject::GeometryAndTopology => "ГиТ",
+        Subject::ComputerScience => "Инф",
+        Subject::English => "ИнЯз",
+        Subject::PhysicalEducation => "Физ-ра",
+    }
+}
+
+impl Display for Location {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let name = match self {
+            Location::Dorm => "Общага",
+            Location::PUNK => "ПУНК",
+            Location::Mausoleum => "Мавзолей",
+            Location::ComputerClass => "Компы",
+            Location::PDMI => "ПОМИ",
+        };
+        f.write_fmt(format_args!("{}", name))
+    }
+}
+
+fn display_scene_router<R: Renderer>(r: &mut R, state: &GameState) -> Result<Action, R::Error> {
+    display_character_stats(r)?;
+    display_knowledge(r)?;
+    display_short_today_timetable(r, state.timetable())?;
+    r.set_color(Color::White, Color::Black)?;
+    r.move_cursor_to(7, 0)?;
+    let mut options = stack_allocated_vec![(&str, Color); 12];
+    match state.location() {
+        Location::PUNK => todo!(),
+        Location::PDMI => todo!(),
+        Location::ComputerClass => todo!(),
+        Location::Dorm => {
+            writeln!(r, "Ты в общаге. Что делать?")?;
+            options.push(("Готовиться", Color::CyanBright));
+            options.push(("Посмотреть расписание", Color::CyanBright));
+            options.push(("Отдыхать", Color::CyanBright));
+            options.push(("Лечь спать", Color::CyanBright));
+            options.push(("Пойти на факультет", Color::CyanBright));
+            options.push(("Поехать в ПОМИ", Color::CyanBright));
+            options.push(("Пойти в мавзолей", Color::CyanBright));
+            options.push(("С меня хватит!", Color::BlueBright));
+            options.push(("ЧТО ДЕЛАТЬ ???", Color::BlueBright));
+        }
+        Location::Mausoleum => todo!(),
+    }
+    r.move_cursor_to(9, 0)?;
+    dialog(r, &options)
+}
+
+fn display_character_stats<R: Renderer>(r: &mut R) -> Result<(), R::Error> {
+    r.set_color(Color::White, Color::Black)?;
+    write!(r, "Сегодня ")?;
+    r.set_color(Color::WhiteBright, Color::Black)?;
+    write!(r, "{}", 22 /* TODO: Write actual date */)?;
+    r.set_color(Color::White, Color::Black)?;
+    write!(r, "е мая; ")?;
+    r.set_color(Color::WhiteBright, Color::Black)?;
+    write!(r, "{}:00    ", 8 /* TODO: Write actual time */)?;
+    r.set_color(Color::MagentaBright, Color::Black)?;
+    write!(r, "Версия gamma3.14")?;
+    writeln!(r)?;
+    r.set_color(Color::White, Color::Black)?;
+    write!(r, "Самочувствие: ")?;
+    {
+        // TODO: Write actual health
+        r.set_color(Color::Green, Color::Black)?;
+        writeln!(r, "отличное")?;
+    }
+    r.set_color(Color::White, Color::Black)?;
+    write!(r, "Финансы: ")?;
+    {
+        // TODO: Write actual money
+        r.set_color(Color::Red, Color::Black)?;
+        writeln!(r, "Надо получить деньги за май...")?;
+    }
+    {
+        // TODO: Write actual brain
+        r.set_color(Color::Green, Color::Black)?;
+        writeln!(r, "Голова свежая")?;
+    }
+    {
+        // TODO: Write actual stamina
+        r.set_color(Color::Green, Color::Black)?;
+        writeln!(r, "Готов к труду и обороне")?;
+    }
+    {
+        // TODO: Write actual charisma
+        r.set_color(Color::YellowBright, Color::Black)?;
+        write!(r, "Ты нормально относишься к окружающим")?;
+    }
+    Ok(())
+}
+
+fn display_knowledge<R: Renderer>(r: &mut R) -> Result<(), R::Error> {
+    for (i, (subject, _)) in SUBJECTS.iter().enumerate() {
+        let line = i as i32;
+        r.move_cursor_to(line, 45)?;
+        r.set_color(Color::CyanBright, Color::Black)?;
+        write!(r, "{}", subject_name(*subject))?;
+        r.move_cursor_to(line, 67)?;
+        r.set_color(Color::Cyan, Color::Black)?;
+
+        // TODO: Write actual knowledge level
+        write!(r, "{}", 0)?;
+
+        r.move_cursor_to(line, 71)?;
+
+        // TODO: Write actual knowledge level description
+        write!(r, "Плохо")?;
+    }
+    Ok(())
+}
+
+fn display_short_today_timetable<R: Renderer>(
+    r: &mut R,
+    timetable: &timetable::Timetable,
+) -> Result<(), R::Error> {
+    let today = &timetable.days()[0]; // TODO: Actual today
+    for (i, (subject, subject_info)) in SUBJECTS.iter().enumerate() {
+        let line = (i as i32) + 9;
+        r.move_cursor_to(line, 50)?;
+
+        // TODO: If passed the exam, set different colors for everything!!!
+
+        r.set_color(Color::CyanBright, Color::Black)?;
+        write!(r, "{}", subject_short_name(*subject))?;
+        r.move_cursor_to(line, 58)?;
+        r.set_color(Color::Red, Color::Black)?;
+        if let Some(exam) = today.exam(*subject) {
+            write!(r, "{}", exam.location())?;
+            r.set_color(Color::WhiteBright, Color::Black)?;
+            r.move_cursor_to(line, 64)?;
+            write!(r, "{}-{}", exam.from(), exam.to())?;
+        } else {
+            write!(r, "----")?;
+        }
+        r.move_cursor_to(line, 72)?;
+        r.set_color(Color::White, Color::Black)?;
+
+        // TODO: Write the actual number of completed problems.
+        write!(r, "{}/{}", 0, subject_info.required_problems())?;
+    }
+    Ok(())
 }

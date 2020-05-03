@@ -1,9 +1,9 @@
-use crate::Error::{IoError, FmtError};
+use crate::Error::{FmtError, IoError};
 
 #[derive(Debug)]
 enum Error {
     IoError(std::io::Error),
-    FmtError(std::fmt::Error)
+    FmtError(std::fmt::Error),
 }
 
 impl std::convert::From<std::io::Error> for Error {
