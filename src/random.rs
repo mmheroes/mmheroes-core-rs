@@ -19,7 +19,9 @@ impl Rng {
         z ^ z.wrapping_shr(31)
     }
 
-    pub(crate) fn random_number_with_upper_bound<B: TryFrom<u64> + TryInto<u64> + Copy>(
+    pub(crate) fn random_number_with_upper_bound<
+        B: TryFrom<u64> + TryInto<u64> + Copy,
+    >(
         &mut self,
         upper_bound: B,
     ) -> B {
@@ -57,9 +59,9 @@ impl Rng {
         };
         let delta = match range.end_bound() {
             Bound::Included(&end) => {
-                let end = end
-                    .try_into()
-                    .unwrap_or_else(|_| panic!("upper bound should be convertible to u64"));
+                let end = end.try_into().unwrap_or_else(|_| {
+                    panic!("upper bound should be convertible to u64")
+                });
                 if end == u64::max_value() && start == 0 {
                     return self.next().try_into().unwrap_or_else(|_| panic!());
                 } else {
@@ -67,9 +69,9 @@ impl Rng {
                 }
             }
             Bound::Excluded(&end) => {
-                end.try_into()
-                    .unwrap_or_else(|_| panic!("upper bound should be convertible to u64"))
-                    - start
+                end.try_into().unwrap_or_else(|_| {
+                    panic!("upper bound should be convertible to u64")
+                }) - start
             }
             Bound::Unbounded => {
                 if start > 0 {

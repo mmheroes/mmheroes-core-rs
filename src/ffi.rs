@@ -13,7 +13,8 @@ type c_char = u8;
 
 macro_rules! declare_renderer_routine {
     (($($args:ty),*) -> ($($ret_tys:ty),*)) => {
-        Option<fn(RendererContext, $($args,)* $(&mut $ret_tys,)* &mut OpaqueError) -> bool>
+        Option<fn(RendererContext,
+                  $($args,)* $(&mut $ret_tys,)* &mut OpaqueError) -> bool>
     }
 }
 
@@ -46,7 +47,9 @@ macro_rules! call_renderer_routine {
             let mut err: OpaqueError = core::ptr::null();
             $(let mut $ret_id = Default::default();)*
             if !$renderer.$func.map_or(true, |f| f($renderer.renderer_ctx,
-                                                   $($args,)* $(&mut $ret_id,)* &mut err)) {
+                                                   $($args,)*
+                                                   $(&mut $ret_id,)*
+                                                   &mut err)) {
                 Err(err)
             } else {
                 Ok(($($ret_id),*))
@@ -78,7 +81,11 @@ impl Renderer for PolymorphicRenderer {
         call_renderer_routine!(self, get_cursor_position, () -> (line, column))
     }
 
-    fn set_color(&mut self, foreground: Color, background: Color) -> Result<(), Self::Error> {
+    fn set_color(
+        &mut self,
+        foreground: Color,
+        background: Color,
+    ) -> Result<(), Self::Error> {
         call_renderer_routine!(self, set_color, (foreground, background) -> ())
     }
 
@@ -108,7 +115,8 @@ pub extern "C" fn mmheroes_run_game(
         game_ui.run()
     };
 
-    // Unwinding through FFI boundaries is undefined behavior, so we stop any unwinding and abort.
+    // Unwinding through FFI boundaries is undefined behavior, so we stop any
+    // unwinding and abort.
     #[cfg(feature = "std")]
     let safely_run = || {
         use std::panic::*;

@@ -1,8 +1,8 @@
 #![macro_use]
 
 pub(crate) struct StackAllocatedVector<T> {
-    pub(crate) storage: T,
-    pub(crate) count: usize,
+    storage: T,
+    count: usize,
 }
 
 macro_rules! __stack_allocated_vector_implementation {
@@ -16,6 +16,7 @@ macro_rules! __stack_allocated_vector_implementation {
             }
 
             pub(crate) fn push(&mut self, value: Element) {
+                assert!(self.count < $capacity, "Capacity is exceeded");
                 self.storage[self.count] = value;
                 self.count += 1;
             }
