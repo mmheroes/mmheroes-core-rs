@@ -11,6 +11,8 @@ pub enum Action {
     _4,
     _5,
     _6,
+    _7,
+    _8,
 }
 
 impl core::convert::TryFrom<i16> for Action {
@@ -27,6 +29,8 @@ impl core::convert::TryFrom<i16> for Action {
             4 => Ok(_4),
             5 => Ok(_5),
             6 => Ok(_6),
+            7 => Ok(_7),
+            8 => Ok(_8),
             _ => Err(()),
         }
     }
@@ -391,30 +395,30 @@ impl Game {
             // Average student
             Action::_0 => Player::new(
                 false,
-                BrainLevel(self.rng.random_number_in_range(4i8..7)),
-                StaminaLevel(self.rng.random_number_in_range(4i8..7)),
-                CharismaLevel(self.rng.random_number_in_range(4i8..7)),
+                BrainLevel(self.rng.random_number_in_range(4..7)),
+                StaminaLevel(self.rng.random_number_in_range(4..7)),
+                CharismaLevel(self.rng.random_number_in_range(4..7)),
             ),
             // Clever student
             Action::_1 => Player::new(
                 false,
-                BrainLevel(self.rng.random_number_in_range(5i8..10)),
-                StaminaLevel(self.rng.random_number_in_range(2i8..5)),
-                CharismaLevel(self.rng.random_number_in_range(2i8..5)),
+                BrainLevel(self.rng.random_number_in_range(5..10)),
+                StaminaLevel(self.rng.random_number_in_range(2..5)),
+                CharismaLevel(self.rng.random_number_in_range(2..5)),
             ),
             // Impudent student
             Action::_2 => Player::new(
                 false,
-                BrainLevel(self.rng.random_number_in_range(2i8..5)),
-                StaminaLevel(self.rng.random_number_in_range(5i8..10)),
-                CharismaLevel(self.rng.random_number_in_range(2i8..5)),
+                BrainLevel(self.rng.random_number_in_range(2..5)),
+                StaminaLevel(self.rng.random_number_in_range(5..10)),
+                CharismaLevel(self.rng.random_number_in_range(2..5)),
             ),
             // Sociable student
             Action::_3 => Player::new(
                 false,
-                BrainLevel(self.rng.random_number_in_range(2i8..5)),
-                StaminaLevel(self.rng.random_number_in_range(2i8..5)),
-                CharismaLevel(self.rng.random_number_in_range(5i8..10)),
+                BrainLevel(self.rng.random_number_in_range(2..5)),
+                StaminaLevel(self.rng.random_number_in_range(2..5)),
+                CharismaLevel(self.rng.random_number_in_range(5..10)),
             ),
             // God
             Action::_4 => Player::new(false, BrainLevel(30), StaminaLevel(30), CharismaLevel(30)),
@@ -424,7 +428,7 @@ impl Game {
 
     fn make_scene_router(&mut self, state: GameState) -> usize {
         // TODO: assert that no exam is in progress
-        match state.location {
+        match state.location() {
             Location::PDMI => todo!(),
             Location::PUNK => todo!(),
             Location::Mausoleum => todo!(),
@@ -437,6 +441,27 @@ impl Game {
     }
 
     fn handle_scene_router_action(&mut self, state: GameState, action: Action) -> usize {
-        todo!()
+        match state.location() {
+            Location::PUNK => todo!(),
+            Location::PDMI => todo!(),
+            Location::ComputerClass => todo!(),
+            Location::Dorm => match action {
+                Action::_0 => todo!("Study"),
+                Action::_1 => {
+                    self.screen = Timetable(state);
+                    // Timetable screen. Press any key to continue.
+                    1
+                },
+                Action::_2 => todo!("Rest"),
+                Action::_3 => todo!("Go to bed"),
+                Action::_4 => todo!("Go to PUNK"),
+                Action::_5 => todo!("Go to PDMI"),
+                Action::_6 => todo!("Go to mausoleum"),
+                Action::_7 => todo!("I'm done!"),
+                Action::_8 => todo!("What to do???"),
+                _ => panic!("invalid state, expected action from 0 to 8."),
+            },
+            Location::Mausoleum => todo!(),
+        }
     }
 }

@@ -2,7 +2,7 @@ pub mod recorded_input;
 pub use recorded_input::*;
 
 use crate::logic::*;
-use crate::util::StackAllocatedVector;
+use crate::util::*;
 
 use core::fmt::Display;
 
@@ -22,6 +22,7 @@ pub enum Color {
     CyanBright = 14,
     WhiteBright = 15,
 }
+
 
 impl Default for Color {
     fn default() -> Self {
@@ -367,7 +368,7 @@ fn display_timetable<R: Renderer>(
             0,
             (i as i32) * TIMETABLE_COLUMN_WIDTH + TIMETABLE_DAYS_START_X,
         )?;
-        write!(r, "{}", day.date())?;
+        write!(r, "{}", day_date(day))?;
     }
 
     r.move_cursor_to(22, 0)?;
@@ -437,6 +438,11 @@ impl Display for Location {
         };
         f.write_fmt(format_args!("{}", name))
     }
+}
+
+pub fn day_date(day: &Day) -> &'static str {
+    const DATES: [&str; NUM_DAYS] = ["22.5", "23.5", "24.5", "25.5", "26.5", "27.5"];
+    DATES[day.index()]
 }
 
 fn display_scene_router<R: Renderer>(r: &mut R, state: &GameState) -> Result<Action, R::Error> {

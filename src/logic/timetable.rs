@@ -118,9 +118,8 @@ impl Day {
         self.exams[exam.subject as usize] = Some(exam)
     }
 
-    pub fn date(&self) -> &'static str {
-        const DATES: [&str; NUM_DAYS] = ["22.5", "23.5", "24.5", "25.5", "26.5", "27.5"];
-        DATES[self.index]
+    pub fn index(&self) -> usize {
+        self.index
     }
 }
 

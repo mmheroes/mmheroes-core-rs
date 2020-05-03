@@ -33,7 +33,6 @@ macro_rules! __stack_allocated_vector_implementation {
 
 __stack_allocated_vector_implementation!(12);
 
-#[macro_use]
 macro_rules! stack_allocated_vec {
     ($ty:ty; $count:literal) => {
         StackAllocatedVector::<[$ty; $count]>::new()
