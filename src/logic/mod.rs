@@ -36,6 +36,17 @@ impl core::convert::TryFrom<i16> for Action {
     }
 }
 
+macro_rules! invalid_action {
+    ($from:literal, $to:literal) => {
+        panic!(concat!(
+            "invalid action, expected from ",
+            $from,
+            " to ",
+            $to
+        ))
+    };
+}
+
 #[derive(Clone, Debug)]
 pub struct GameState {
     player: Player,
@@ -65,6 +76,12 @@ pub enum GameScreen {
     Ding(Player),
     Timetable(GameState),
     SceneRouter(GameState),
+    WhatToDo(GameState),
+    AboutScreen(GameState),
+    WhereToGoAndWhy(GameState),
+    AboutProfessors(GameState),
+    AboutCharacters(GameState),
+    AboutThisProgram(GameState),
 }
 
 macro_rules! define_characteristic {
@@ -296,6 +313,8 @@ impl Subjects {
 
 pub const SUBJECTS: Subjects = Subjects::new();
 
+pub const HELP_SCREEN_OPTION_COUNT: usize = 7;
+
 impl core::ops::Index<Subject> for Subjects {
     type Output = (Subject, SubjectInfo);
 
@@ -310,6 +329,7 @@ pub struct Game {
     screen: GameScreen,
     rng: crate::random::Rng,
     mode: GameMode,
+    available_actions: usize,
 }
 
 impl Game {
@@ -319,6 +339,7 @@ impl Game {
             screen: Start,
             rng,
             mode,
+            available_actions: 1,
         }
     }
 
@@ -330,103 +351,125 @@ impl Game {
         self.mode
     }
 
+    pub fn available_actions(&self) -> usize {
+        self.available_actions
+    }
+
+    pub fn perform_action(&mut self, action: Action) {
+        assert!(
+            (action as usize) < self.available_actions,
+            "Unexpected action"
+        );
+        self.available_actions = self._perform_action(action)
+    }
+
     /// Accepts an action, returns the number of actions available in the updated state.
-    pub fn perform_action(&mut self, action: Action) -> usize {
+    fn _perform_action(&mut self, action: Action) -> usize {
         match &self.screen {
             Start => {
                 self.screen = Intro;
-                // Intro screen. Press any key to continue.
+                // Начальный экран. Нажми любую клавишу.
                 1
             }
             Terminal => 0,
             Intro => match self.mode {
                 GameMode::SelectInitialParameters => {
                     self.screen = InitialParameters;
-                    // The player can choose from 4 initial states:
-                    // - random student
-                    // - clever student
-                    // - impudent student
-                    // - sociable student
+                    // Можно выбрать 4 стиля игры:
+                    // - Случайный студент
+                    // - Шибко умный
+                    // - Шибко наглый
+                    // - Шибко общительный
                     4
                 }
                 GameMode::God => {
                     self.screen = InitialParameters;
-                    // The player can choose from 5 initial states:
-                    // - random student
-                    // - clever student
-                    // - impudent student
-                    // - sociable student
-                    // - god mode
+                    // Можно выбрать 5 стилей игры:
+                    // - Случайный студент
+                    // - Шибко умный
+                    // - Шибко наглый
+                    // - Шибко общительный
+                    // - GOD-режим
                     5
                 }
                 GameMode::Normal => {
-                    self.screen = Ding(self.initialize_player(Action::_0 /* random student */));
-                    // Ding screen. Press any key to continue.
-                    1
+                    self.ding(Action::_0 /* Случайный студент */)
                 }
             },
-            InitialParameters => {
-                self.screen = Ding(self.initialize_player(action));
-                // Ding screen. Press any key to continue.
-                1
-            }
+            InitialParameters => self.ding(action),
             Ding(player) => {
-                self.screen = GameScreen::Timetable(GameState {
+                let state = GameState {
                     player: player.clone(),
                     timetable: timetable::Timetable::random(&mut self.rng),
                     location: Location::Dorm,
-                });
-                // Timetable screen. Press any key to continue.
-                1
+                };
+                self.view_timetable(state)
             }
             Timetable(state) => {
                 let state = state.clone();
-                self.make_scene_router(state)
+                self.scene_router(state)
             }
             SceneRouter(state) => {
                 let state = state.clone();
                 self.handle_scene_router_action(state, action)
             }
+            WhatToDo(state)
+            | AboutScreen(state)
+            | WhereToGoAndWhy(state)
+            | AboutProfessors(state)
+            | AboutCharacters(state)
+            | AboutThisProgram(state) => {
+                let state = state.clone();
+                self.handle_what_to_do(state, action)
+            }
         }
+    }
+
+    fn ding(&mut self, action: Action) -> usize {
+        self.screen = Ding(self.initialize_player(action));
+        // "Нажми любую клавишу ..."
+        1
     }
 
     fn initialize_player(&mut self, parameters: Action) -> Player {
         match parameters {
-            // Average student
+            // "Случайный студент"
             Action::_0 => Player::new(
                 false,
                 BrainLevel(self.rng.random_number_in_range(4..7)),
                 StaminaLevel(self.rng.random_number_in_range(4..7)),
                 CharismaLevel(self.rng.random_number_in_range(4..7)),
             ),
-            // Clever student
+            // "Шибко умный"
             Action::_1 => Player::new(
                 false,
                 BrainLevel(self.rng.random_number_in_range(5..10)),
                 StaminaLevel(self.rng.random_number_in_range(2..5)),
                 CharismaLevel(self.rng.random_number_in_range(2..5)),
             ),
-            // Impudent student
+            // "Шибко наглый"
             Action::_2 => Player::new(
                 false,
                 BrainLevel(self.rng.random_number_in_range(2..5)),
                 StaminaLevel(self.rng.random_number_in_range(5..10)),
                 CharismaLevel(self.rng.random_number_in_range(2..5)),
             ),
-            // Sociable student
+            // "Шибко общительный"
             Action::_3 => Player::new(
                 false,
                 BrainLevel(self.rng.random_number_in_range(2..5)),
                 StaminaLevel(self.rng.random_number_in_range(2..5)),
                 CharismaLevel(self.rng.random_number_in_range(5..10)),
             ),
-            // God
-            Action::_4 => Player::new(false, BrainLevel(30), StaminaLevel(30), CharismaLevel(30)),
-            _ => panic!("invalid state, expected action from 0 to 4."),
+            // "GOD-режим"
+            Action::_4 => {
+                Player::new(false, BrainLevel(30), StaminaLevel(30), CharismaLevel(30))
+            }
+            _ => invalid_action!(0, 4),
         }
     }
 
-    fn make_scene_router(&mut self, state: GameState) -> usize {
+    fn scene_router(&mut self, state: GameState) -> usize {
         // TODO: assert that no exam is in progress
         match state.location() {
             Location::PDMI => todo!(),
@@ -447,21 +490,63 @@ impl Game {
             Location::ComputerClass => todo!(),
             Location::Dorm => match action {
                 Action::_0 => todo!("Study"),
-                Action::_1 => {
-                    self.screen = Timetable(state);
-                    // Timetable screen. Press any key to continue.
-                    1
-                },
+                Action::_1 => self.view_timetable(state),
                 Action::_2 => todo!("Rest"),
                 Action::_3 => todo!("Go to bed"),
                 Action::_4 => todo!("Go to PUNK"),
                 Action::_5 => todo!("Go to PDMI"),
                 Action::_6 => todo!("Go to mausoleum"),
                 Action::_7 => todo!("I'm done!"),
-                Action::_8 => todo!("What to do???"),
-                _ => panic!("invalid state, expected action from 0 to 8."),
+                Action::_8 => {
+                    self.screen = WhatToDo(state);
+                    HELP_SCREEN_OPTION_COUNT
+                }
+                _ => invalid_action!(0, 8),
             },
             Location::Mausoleum => todo!(),
         }
+    }
+
+    fn view_timetable(&mut self, state: GameState) -> usize {
+        self.screen = Timetable(state);
+        // "Нажми любую клавишу ..."
+        1
+    }
+
+    fn handle_what_to_do(&mut self, state: GameState, action: Action) -> usize {
+        assert_eq!(state.location(), Location::Dorm);
+        match action {
+            Action::_0 => {
+                // "А что вообще делать?"
+                self.screen = WhatToDo(state)
+            }
+            Action::_1 => {
+                // "Об экране"
+                self.screen = AboutScreen(state)
+            }
+            Action::_2 => {
+                // "Куда и зачем ходить?"
+                self.screen = WhereToGoAndWhy(state)
+            }
+            Action::_3 => {
+                // "О преподавателях"
+                self.screen = AboutProfessors(state)
+            }
+            Action::_4 => {
+                // "О персонажах"
+                self.screen = AboutCharacters(state)
+            }
+            Action::_5 => {
+                // "Об этой программе"
+                self.screen = AboutThisProgram(state)
+            }
+            Action::_6 => {
+                // "Спасибо, ничего"
+                // Возвращаемся на главный экран
+                return self.scene_router(state);
+            }
+            _ => invalid_action!(0, 6),
+        };
+        HELP_SCREEN_OPTION_COUNT
     }
 }

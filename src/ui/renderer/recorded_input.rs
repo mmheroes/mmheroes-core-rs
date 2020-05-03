@@ -5,8 +5,8 @@ pub enum RecordedInputRendererError {
     ExpectedMoreInput,
 }
 
-/// This renderer does nothing except replaying the input values passed to it to whoever calls
-/// its `getch` method.
+/// This renderer does nothing except replaying the input values passed to it to whoever
+/// calls its `getch` method.
 ///
 /// This is useful for fuzzing the game logic.
 pub struct RecordedInputRenderer<I: Iterator<Item = Input>> {
@@ -57,7 +57,11 @@ impl<I: Iterator<Item = Input>> Renderer for RecordedInputRenderer<I> {
         error_if_finished!(self)
     }
 
-    fn set_color(&mut self, _foreground: Color, _background: Color) -> Result<(), Self::Error> {
+    fn set_color(
+        &mut self,
+        _foreground: Color,
+        _background: Color,
+    ) -> Result<(), Self::Error> {
         error_if_finished!(self)
     }
 
