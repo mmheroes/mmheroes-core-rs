@@ -69,18 +69,57 @@ impl GameState {
 }
 
 pub enum GameScreen {
+    /// Начальное состояние. Ему не соответствует никакой экран.
     Start,
+
+    /// Терминальное состояние. Ему тоже не соответствует никакой экран.
+    /// Игра завершена безвозвратно.
     Terminal,
+
+    /// Самый первый экран, который видет пользователь.
     Intro,
+
+    /// Экран, который видит пользователь, если запускает игру с каким-то аргументом.
+    /// Предлагает выбрать стиль игры.
     InitialParameters,
+
+    /// Экран с предысторией ("ты просыпаешься от звонка будильника...")
     Ding(Player),
+
+    /// Экран с расписанием.
     Timetable(GameState),
+
+    /// Главный экран.
     SceneRouter(GameState),
+
+    /// Экран "ты серьёзно хочешь закончить игру?"
+    IAmDone(GameState),
+
+    /// Финальный экран с описанием причины смерти/отчисления, либо поздравлением.
+    GameEnd(GameState),
+
+    /// Пользователю предлагается либо повторить игру, либо выйти.
+    WannaTryAgain,
+
+    /// Экран, который отображается пользователю, если он решил выйти из игры.
+    Disclaimer,
+
+    /// Экран помощи с описанием цели игры.
     WhatToDo(GameState),
+
+    /// Экран помощи с описанием главного экрана.
     AboutScreen(GameState),
+
+    /// Экран помощи с описанием локаций.
     WhereToGoAndWhy(GameState),
+
+    /// Экран помощи с описанием преподавателей.
     AboutProfessors(GameState),
+
+    /// Экран помощи с описанием NPC-шек.
     AboutCharacters(GameState),
+
+    /// Экран помощи с информацией о программе.
     AboutThisProgram(GameState),
 }
 
@@ -196,7 +235,7 @@ pub struct SubjectInfo {
 
     // TODO: Rename
     member0xFA: i16,
-    member0xFC: i16,
+    member0xFC: i16, // Минимальный уровень познания?
     member0x100: i16,
 }
 
@@ -368,34 +407,11 @@ impl Game {
         match &self.screen {
             Start => {
                 self.screen = Intro;
-                // Начальный экран. Нажми любую клавишу.
+                // Начальный экран. "Нажми любую клавишу".
                 1
             }
-            Terminal => 0,
-            Intro => match self.mode {
-                GameMode::SelectInitialParameters => {
-                    self.screen = InitialParameters;
-                    // Можно выбрать 4 стиля игры:
-                    // - Случайный студент
-                    // - Шибко умный
-                    // - Шибко наглый
-                    // - Шибко общительный
-                    4
-                }
-                GameMode::God => {
-                    self.screen = InitialParameters;
-                    // Можно выбрать 5 стилей игры:
-                    // - Случайный студент
-                    // - Шибко умный
-                    // - Шибко наглый
-                    // - Шибко общительный
-                    // - GOD-режим
-                    5
-                }
-                GameMode::Normal => {
-                    self.ding(Action::_0 /* Случайный студент */)
-                }
-            },
+            Terminal => panic!("Attempted to perform an action in terminal state"),
+            Intro => self.start_game(),
             InitialParameters => self.ding(action),
             Ding(player) => {
                 let state = GameState {
@@ -413,6 +429,16 @@ impl Game {
                 let state = state.clone();
                 self.handle_scene_router_action(state, action)
             }
+            IAmDone(state) => {
+                let state = state.clone();
+                self.handle_i_am_done(state, action)
+            }
+            GameEnd(_) => self.wanna_try_again(),
+            WannaTryAgain => self.handle_wanna_try_again(action),
+            Disclaimer => {
+                self.screen = Terminal;
+                0
+            }
             WhatToDo(state)
             | AboutScreen(state)
             | WhereToGoAndWhy(state)
@@ -421,6 +447,33 @@ impl Game {
             | AboutThisProgram(state) => {
                 let state = state.clone();
                 self.handle_what_to_do(state, action)
+            }
+        }
+    }
+
+    fn start_game(&mut self) -> usize {
+        match self.mode {
+            GameMode::SelectInitialParameters => {
+                self.screen = InitialParameters;
+                // Можно выбрать 4 стиля игры:
+                // - Случайный студент
+                // - Шибко умный
+                // - Шибко наглый
+                // - Шибко общительный
+                4
+            }
+            GameMode::God => {
+                self.screen = InitialParameters;
+                // Можно выбрать 5 стилей игры:
+                // - Случайный студент
+                // - Шибко умный
+                // - Шибко наглый
+                // - Шибко общительный
+                // - GOD-режим
+                5
+            }
+            GameMode::Normal => {
+                self.ding(Action::_0 /* Случайный студент */)
             }
         }
     }
@@ -496,7 +549,7 @@ impl Game {
                 Action::_4 => todo!("Go to PUNK"),
                 Action::_5 => todo!("Go to PDMI"),
                 Action::_6 => todo!("Go to mausoleum"),
-                Action::_7 => todo!("I'm done!"),
+                Action::_7 => self.i_am_done(state),
                 Action::_8 => {
                     self.screen = WhatToDo(state);
                     HELP_SCREEN_OPTION_COUNT
@@ -511,6 +564,43 @@ impl Game {
         self.screen = Timetable(state);
         // "Нажми любую клавишу ..."
         1
+    }
+
+    fn i_am_done(&mut self, state: GameState) -> usize {
+        self.screen = IAmDone(state);
+        2
+    }
+
+    fn handle_i_am_done(&mut self, state: GameState, action: Action) -> usize {
+        match action {
+            Action::_0 => self.scene_router(state),
+            Action::_1 => self.game_end(state),
+            _ => invalid_action!(0, 1),
+        }
+    }
+
+    fn game_end(&mut self, state: GameState) -> usize {
+        self.screen = GameEnd(state);
+        // "Нажми любую клавишу ..."
+        1
+    }
+
+    fn wanna_try_again(&mut self) -> usize {
+        self.screen = WannaTryAgain;
+        // Хочешь попробовать снова? Да или нет.
+        2
+    }
+
+    fn handle_wanna_try_again(&mut self, action: Action) -> usize {
+        match action {
+            Action::_0 => self.start_game(),
+            Action::_1 => {
+                self.screen = Disclaimer;
+                // "Нажми любую клавишу ..."
+                1
+            }
+            _ => invalid_action!(0, 1),
+        }
     }
 
     fn handle_what_to_do(&mut self, state: GameState, action: Action) -> usize {

@@ -81,6 +81,14 @@ impl<'r, R: Renderer> GameUI<'r, R> {
                 SceneRouter(state) => {
                     screens::scene_router::display_scene_router(self.renderer, state)?
                 }
+                IAmDone(_) => screens::game_end::display_i_am_done(self.renderer)?,
+                GameEnd(state) => {
+                    screens::game_end::display_game_end(self.renderer, state)?
+                }
+                WannaTryAgain => {
+                    screens::game_end::display_wanna_try_again(self.renderer)?
+                }
+                Disclaimer => screens::game_end::display_disclaimer(self.renderer)?,
                 WhatToDo(_) => screens::help::display_what_to_do(self.renderer)?,
                 AboutScreen(_) => screens::help::display_about_screen(self.renderer)?,
                 WhereToGoAndWhy(_) => {
