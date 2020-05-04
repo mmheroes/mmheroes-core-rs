@@ -2,7 +2,7 @@ pub use crate::logic::{Location, Subject, NUM_SUBJECTS, SUBJECTS};
 
 use core::convert::TryFrom;
 use core::fmt::{Display, Formatter};
-use core::ops::{Add, Sub};
+use core::ops::{Add, AddAssign, Sub};
 
 pub const NUM_DAYS: usize = 6;
 
@@ -14,6 +14,12 @@ pub struct Time(pub u8);
 
 pub const WORKDAY_BEGINS: Time = Time(9);
 pub const WORKDAY_ENDS: Time = Time(18);
+
+impl Time {
+    pub fn is_midnight(self) -> bool {
+        self.0 == 0 || self.0 == 24
+    }
+}
 
 impl Display for Time {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
@@ -35,6 +41,12 @@ impl Add<Duration> for Time {
         } else {
             Time(self.0 + rhs.0 as u8)
         }
+    }
+}
+
+impl AddAssign<Duration> for Time  {
+    fn add_assign(&mut self, rhs: Duration) {
+        *self = *self + rhs
     }
 }
 

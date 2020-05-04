@@ -31,7 +31,15 @@ pub(in crate::ui) fn display_scene_router<R: Renderer>(
         Location::Mausoleum => todo!(),
     }
     r.move_cursor_to(9, 0)?;
-    dialog(r, &options)
+    if state.failed_attempt_to_sleep() {
+        assert!(state.location() == Location::Dorm);
+        inactive_dialog(r, &options)?;
+        r.move_cursor_to(21, 0)?;
+        write_colored!(White, r, "Тебя чего-то не тянет по-спать...")?;
+        wait_for_any_key(r)
+    } else {
+        dialog(r, &options)
+    }
 }
 
 fn display_character_stats<R: Renderer>(
@@ -44,7 +52,8 @@ fn display_character_stats<R: Renderer>(
     // Первый день недели — 22-е мая.
     write_colored!(WhiteBright, r, "{}", today.index() + 22)?;
     write_colored!(White, r, "е мая; ")?;
-    write_colored!(WhiteBright, r, "{}:00    ", now)?;
+    write_colored!(WhiteBright, r, "{}:00", now)?;
+    r.move_cursor_to(0, 25)?;
     writeln_colored!(MagentaBright, r, "Версия gamma3.14")?;
 
     write_colored!(White, r, "Самочувствие: ")?;

@@ -4,9 +4,15 @@ pub use timetable::*;
 pub mod characteristics;
 pub use characteristics::*;
 
+pub mod game_state;
+pub use game_state::*;
+
+pub mod subjects;
+pub use subjects::*;
+
 use crate::random;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Action {
     Exit = -1,
     _0,
@@ -50,51 +56,6 @@ macro_rules! invalid_action {
             $to
         ))
     };
-}
-
-#[derive(Clone, Debug)]
-pub struct GameState {
-    player: Player,
-    current_day_index: usize,
-    current_time: Time,
-    timetable: timetable::Timetable,
-    location: Location,
-}
-
-impl GameState {
-    fn new(
-        player: Player,
-        timetable: timetable::Timetable,
-        location: Location,
-    ) -> GameState {
-        GameState {
-            player,
-            current_day_index: 0,
-            current_time: Time(8),
-            timetable,
-            location,
-        }
-    }
-
-    pub fn current_day(&self) -> &Day {
-        &self.timetable.days()[self.current_day_index]
-    }
-
-    pub fn current_time(&self) -> Time {
-        self.current_time
-    }
-
-    pub fn player(&self) -> &Player {
-        &self.player
-    }
-
-    pub fn timetable(&self) -> &timetable::Timetable {
-        &self.timetable
-    }
-
-    pub fn location(&self) -> Location {
-        self.location
-    }
 }
 
 pub enum GameScreen {
@@ -152,181 +113,6 @@ pub enum GameScreen {
     AboutThisProgram(GameState),
 }
 
-#[derive(Debug, Clone)]
-pub struct SubjectStatus {
-    subject: Subject,
-    knowledge: BrainLevel,
-    passed_exam_day_index: Option<usize>,
-    problems_done: u8,
-}
-
-impl SubjectStatus {
-    pub fn knowledge(&self) -> BrainLevel {
-        self.knowledge
-    }
-
-    pub fn subject(&self) -> Subject {
-        self.subject
-    }
-
-    pub fn problems_done(&self) -> u8 {
-        self.problems_done
-    }
-
-    pub fn passed(&self) -> bool {
-        self.passed_exam_day_index.is_some()
-    }
-
-    pub fn passed_exam_day<'a>(
-        &self,
-        timetable: &'a timetable::Timetable,
-    ) -> Option<&'a Day> {
-        self.passed_exam_day_index.map(|i| &timetable.days()[i])
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Player {
-    subjects: [SubjectStatus; NUM_SUBJECTS],
-    god_mode: bool,
-
-    /// Запах чеснока изо рта
-    garlic: i16,
-
-    /// Получил ли персонаж дискету с новой версией MMHEROES от Diamond
-    has_mmheroes_floppy: bool,
-    has_internet: bool,
-    is_invited: bool,
-    inception: bool,
-    employed_at_terkom: bool,
-    got_stipend: bool,
-    has_ticket: bool,
-    knows_djug: bool,
-
-    health: HealthLevel,
-    money: Money,
-    brain: BrainLevel,
-    stamina: StaminaLevel,
-    charisma: CharismaLevel,
-}
-
-impl Player {
-    fn new(
-        god_mode: bool,
-        health: HealthLevel,
-        brain: BrainLevel,
-        stamina: StaminaLevel,
-        charisma: CharismaLevel,
-        mut knowledge: impl FnMut(Subject) -> BrainLevel,
-    ) -> Player {
-        let player = Player {
-            subjects: [
-                SubjectStatus {
-                    subject: Subject::AlgebraAndNumberTheory,
-                    knowledge: knowledge(Subject::AlgebraAndNumberTheory),
-                    passed_exam_day_index: None,
-                    problems_done: 0,
-                },
-                SubjectStatus {
-                    subject: Subject::Calculus,
-                    knowledge: knowledge(Subject::Calculus),
-                    passed_exam_day_index: None,
-                    problems_done: 0,
-                },
-                SubjectStatus {
-                    subject: Subject::GeometryAndTopology,
-                    knowledge: knowledge(Subject::GeometryAndTopology),
-                    passed_exam_day_index: None,
-                    problems_done: 0,
-                },
-                SubjectStatus {
-                    subject: Subject::ComputerScience,
-                    knowledge: knowledge(Subject::ComputerScience),
-                    passed_exam_day_index: None,
-                    problems_done: 0,
-                },
-                SubjectStatus {
-                    subject: Subject::English,
-                    knowledge: knowledge(Subject::English),
-                    passed_exam_day_index: None,
-                    problems_done: 0,
-                },
-                SubjectStatus {
-                    subject: Subject::PhysicalEducation,
-                    knowledge: knowledge(Subject::PhysicalEducation),
-                    passed_exam_day_index: None,
-                    problems_done: 0,
-                },
-            ],
-            god_mode,
-            garlic: 0,
-            has_mmheroes_floppy: false,
-            has_internet: false,
-            is_invited: false,
-            inception: false,
-            employed_at_terkom: false,
-            got_stipend: false,
-            has_ticket: false,
-            knows_djug: false,
-            health,
-            money: Money(0),
-            brain,
-            stamina,
-            charisma,
-        };
-
-        for subject in player.subjects.iter() {
-            assert!(subject.knowledge < player.brain);
-        }
-
-        player
-    }
-
-    pub fn status_for_subject(&self, subject: Subject) -> &SubjectStatus {
-        &self.subjects[subject as usize]
-    }
-
-    pub fn exams_left(&self) -> usize {
-        self.subjects
-            .iter()
-            .filter(|s| s.passed_exam_day_index.is_none())
-            .count()
-    }
-
-    pub fn health(&self) -> HealthLevel {
-        self.health
-    }
-
-    pub fn money(&self) -> Money {
-        self.money
-    }
-
-    pub fn got_stipend(&self) -> bool {
-        self.got_stipend
-    }
-
-    pub fn brain(&self) -> BrainLevel {
-        self.brain
-    }
-
-    pub fn stamina(&self) -> StaminaLevel {
-        self.stamina
-    }
-
-    pub fn charisma(&self) -> CharismaLevel {
-        self.charisma
-    }
-}
-
-#[derive(Clone, Copy, Eq, PartialEq, Debug)]
-pub enum Location {
-    PUNK = 1,
-    PDMI = 2,
-    ComputerClass = 3,
-    Dorm = 4,
-    Mausoleum = 5,
-}
-
 /// The game mode selector.
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 #[repr(C)]
@@ -349,177 +135,7 @@ pub enum GameMode {
     God,
 }
 
-#[derive(Debug)]
-#[allow(non_snake_case)] // TODO: Remove this
-pub struct SubjectInfo {
-    required_problems: u8,
-    exam_days: u16,
-    exam_min_duration: Duration,
-    exam_max_duration: Duration,
-    exam_places: [Location; 3],
-
-    // TODO: Rename
-    member0xFA: i16,
-    member0xFC: i16, // Минимальный уровень познания?
-    member0x100: i16,
-
-    /// Какой уровень знаний соответствует какой оценке по шкале этого препода.
-    assessment_bounds: [(BrainLevel, KnowledgeAssessment); 3],
-}
-
-impl SubjectInfo {
-    pub fn required_problems(&self) -> u8 {
-        self.required_problems
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Subject {
-    AlgebraAndNumberTheory,
-    Calculus,
-    GeometryAndTopology,
-    ComputerScience,
-    English,
-    PhysicalEducation,
-}
-
-pub const NUM_SUBJECTS: usize = 6;
-
-pub struct Subjects([(Subject, SubjectInfo); NUM_SUBJECTS]);
-
-impl Subjects {
-    const fn new() -> Subjects {
-        use KnowledgeAssessment::*;
-        use Location::*;
-        use Subject::*;
-        Subjects([
-            (
-                AlgebraAndNumberTheory,
-                SubjectInfo {
-                    required_problems: 12,
-                    exam_days: 4,
-                    exam_min_duration: Duration(2),
-                    exam_max_duration: Duration(4),
-                    exam_places: [PUNK, PUNK, PDMI],
-                    member0xFA: 10,
-                    member0xFC: 17,
-                    member0x100: 3,
-                    assessment_bounds: [
-                        (BrainLevel(11), Bad),
-                        (BrainLevel(21), Satisfactory),
-                        (BrainLevel(51), Good),
-                    ],
-                },
-            ),
-            (
-                Calculus,
-                SubjectInfo {
-                    required_problems: 10,
-                    exam_days: 4,
-                    exam_min_duration: Duration(2),
-                    exam_max_duration: Duration(3),
-                    exam_places: [PUNK, PUNK, PUNK],
-                    member0xFA: 8,
-                    member0xFC: 14,
-                    member0x100: 2,
-                    assessment_bounds: [
-                        (BrainLevel(9), Bad),
-                        (BrainLevel(19), Satisfactory),
-                        (BrainLevel(41), Good),
-                    ],
-                },
-            ),
-            (
-                GeometryAndTopology,
-                SubjectInfo {
-                    required_problems: 3,
-                    exam_days: 2,
-                    exam_min_duration: Duration(1),
-                    exam_max_duration: Duration(3),
-                    exam_places: [PUNK, PDMI, PDMI],
-                    member0xFA: 4,
-                    member0xFC: 8,
-                    member0x100: 3,
-                    assessment_bounds: [
-                        (BrainLevel(6), Bad),
-                        (BrainLevel(11), Satisfactory),
-                        (BrainLevel(31), Good),
-                    ],
-                },
-            ),
-            (
-                ComputerScience,
-                SubjectInfo {
-                    required_problems: 2,
-                    exam_days: 2, // FIXME: May be 3.
-                    exam_min_duration: Duration(1),
-                    exam_max_duration: Duration(2),
-                    exam_places: [ComputerClass, ComputerClass, ComputerClass],
-                    member0xFA: 5,
-                    member0xFC: 6,
-                    member0x100: 3,
-                    assessment_bounds: [
-                        (BrainLevel(10), Bad),
-                        (BrainLevel(16), Satisfactory),
-                        (BrainLevel(31), Good),
-                    ],
-                },
-            ),
-            (
-                English,
-                SubjectInfo {
-                    required_problems: 3,
-                    exam_days: 2,
-                    exam_min_duration: Duration(2),
-                    exam_max_duration: Duration(2),
-                    exam_places: [PUNK, PUNK, PUNK],
-                    member0xFA: 7,
-                    member0xFC: 10,
-                    member0x100: 1,
-                    assessment_bounds: [
-                        (BrainLevel(5), Bad),
-                        (BrainLevel(9), Satisfactory),
-                        (BrainLevel(16), Good),
-                    ],
-                },
-            ),
-            (
-                PhysicalEducation,
-                SubjectInfo {
-                    required_problems: 1,
-                    exam_days: 2,
-                    exam_min_duration: Duration(1),
-                    exam_max_duration: Duration(1),
-                    exam_places: [PUNK, PUNK, PUNK],
-                    member0xFA: 7,
-                    member0xFC: 20,
-                    member0x100: 1,
-                    assessment_bounds: [
-                        (BrainLevel(5), Bad),
-                        (BrainLevel(9), Satisfactory),
-                        (BrainLevel(16), Good),
-                    ],
-                },
-            ),
-        ])
-    }
-
-    pub fn iter(&self) -> core::slice::Iter<'_, (Subject, SubjectInfo)> {
-        self.0.iter()
-    }
-}
-
-pub const SUBJECTS: Subjects = Subjects::new();
-
 pub const HELP_SCREEN_OPTION_COUNT: usize = 7;
-
-impl core::ops::Index<Subject> for Subjects {
-    type Output = (Subject, SubjectInfo);
-
-    fn index(&self, index: Subject) -> &Self::Output {
-        &self.0[index as usize]
-    }
-}
 
 use GameScreen::*;
 
@@ -700,20 +316,39 @@ impl Game {
         }
     }
 
-    fn handle_scene_router_action(&mut self, state: GameState, action: Action) -> usize {
+    fn handle_scene_router_action(&mut self, mut state: GameState, action: Action) -> usize {
+        if state.failed_attempt_to_sleep {
+            assert!(state.location == Location::Dorm,
+                    "Если игрок попытался уснуть, он должен был быть в общаге.");
+            if action == Action::_0 {
+                state.failed_attempt_to_sleep = false;
+                return self.scene_router(state)
+            } else {
+                invalid_action!(0, 0)
+            }
+        }
         match state.location() {
             Location::PUNK => todo!(),
             Location::PDMI => todo!(),
             Location::ComputerClass => todo!(),
             Location::Dorm => match action {
+                // Готовиться
                 Action::_0 => todo!("Study"),
+                // Посмотреть расписание
                 Action::_1 => self.view_timetable(state),
-                Action::_2 => todo!("Rest"),
-                Action::_3 => todo!("Go to bed"),
+                // Отдыхать
+                Action::_2 => self.rest_in_dorm(state),
+                // Лечь спать
+                Action::_3 => self.try_to_sleep(state),
+                // Пойти на факультет
                 Action::_4 => todo!("Go to PUNK"),
+                // Поехать в ПОМИ
                 Action::_5 => todo!("Go to PDMI"),
+                // Пойти в мавзолей
                 Action::_6 => todo!("Go to mausoleum"),
+                // С меня хватит!
                 Action::_7 => self.i_am_done(state),
+                // ЧТО ДЕЛАТЬ ???
                 Action::_8 => {
                     self.screen = WhatToDo(state);
                     HELP_SCREEN_OPTION_COUNT
@@ -728,6 +363,48 @@ impl Game {
         self.screen = Timetable(state);
         // "Нажми любую клавишу ..."
         1
+    }
+
+    fn try_to_sleep(&mut self, mut state: GameState) -> usize {
+        assert!(state.location == Location::Dorm);
+        if state.current_time > Time(3) && state.current_time < Time(20) {
+            state.failed_attempt_to_sleep = true;
+            self.scene_router(state)
+        } else {
+            self.go_to_sleep(state)
+        }
+    }
+
+    fn go_to_sleep(&mut self, mut state: GameState) -> usize {
+        todo!()
+    }
+
+    fn midnight(&mut self, state: GameState) -> usize {
+        match state.location {
+            Location::PUNK => todo!("sub_1E907"),
+            Location::PDMI => todo!("sub_1E7F8"),
+            Location::ComputerClass => unreachable!("Компьютерный класс уже должен быть закрыт в полночь!"),
+            Location::Dorm => self.go_to_sleep(state),
+            Location::Mausoleum => todo!("sub_1E993"),
+        }
+    }
+
+    fn hour_pass(&mut self, mut state: GameState) -> usize {
+        // TODO: Lot of stuff going on here
+        state.current_time += Duration(1);
+
+        if state.current_time.is_midnight() {
+            state.current_day_index += 1;
+            state.current_time = Time(0);
+            return self.midnight(state)
+        }
+
+        self.scene_router(state)
+    }
+
+    fn rest_in_dorm(&mut self, mut state: GameState) -> usize {
+        state.player.health += self.rng.random_number_in_range(7..15);
+        self.hour_pass(state)
     }
 
     fn i_am_done(&mut self, state: GameState) -> usize {

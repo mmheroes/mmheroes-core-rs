@@ -129,6 +129,16 @@ fn wait_for_any_key<R: Renderer>(r: &mut R) -> Result<Action, R::Error> {
     }
 }
 
+fn inactive_dialog<R: Renderer>(r: &mut R, options: &[(&str, Color)]) -> Result<(), R::Error> {
+    let start = r.get_cursor_position()?;
+    for (i, &(name, color)) in options.iter().enumerate() {
+        r.move_cursor_to(start.0 + i as i32, start.1)?;
+        r.set_color(color, Color::Black)?;
+        write!(r, "{}", name)?;
+    }
+    Ok(())
+}
+
 fn dialog<R: Renderer>(r: &mut R, options: &[(&str, Color)]) -> Result<Action, R::Error> {
     use core::convert::{TryFrom, TryInto};
 
