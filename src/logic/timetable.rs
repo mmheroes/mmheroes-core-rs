@@ -17,6 +17,7 @@ pub const WORKDAY_ENDS: Time = Time(18);
 
 impl Display for Time {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        assert!(self.0 < 24);
         f.write_fmt(format_args!("{}", self.0))
     }
 }

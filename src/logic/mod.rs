@@ -1,6 +1,11 @@
 pub mod timetable;
 pub use timetable::*;
 
+pub mod characteristics;
+pub use characteristics::*;
+
+use crate::random;
+
 #[derive(Copy, Clone, Debug)]
 pub enum Action {
     Exit = -1,
@@ -50,11 +55,35 @@ macro_rules! invalid_action {
 #[derive(Clone, Debug)]
 pub struct GameState {
     player: Player,
+    current_day_index: usize,
+    current_time: Time,
     timetable: timetable::Timetable,
     location: Location,
 }
 
 impl GameState {
+    fn new(
+        player: Player,
+        timetable: timetable::Timetable,
+        location: Location,
+    ) -> GameState {
+        GameState {
+            player,
+            current_day_index: 0,
+            current_time: Time(8),
+            timetable,
+            location,
+        }
+    }
+
+    pub fn current_day(&self) -> &Day {
+        &self.timetable.days()[self.current_day_index]
+    }
+
+    pub fn current_time(&self) -> Time {
+        self.current_time
+    }
+
     pub fn player(&self) -> &Player {
         &self.player
     }
@@ -123,35 +152,48 @@ pub enum GameScreen {
     AboutThisProgram(GameState),
 }
 
-macro_rules! define_characteristic {
-    ($name:ident) => {
-        #[repr(transparent)]
-        #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug)]
-        struct $name(i8);
-
-        impl core::ops::AddAssign<i8> for $name {
-            fn add_assign(&mut self, rhs: i8) {
-                self.0 += rhs
-            }
-        }
-
-        impl core::ops::SubAssign<i8> for $name {
-            fn sub_assign(&mut self, rhs: i8) {
-                self.0 -= rhs
-            }
-        }
-    };
+#[derive(Debug, Clone)]
+pub struct SubjectStatus {
+    subject: Subject,
+    knowledge: BrainLevel,
+    passed_exam_day_index: Option<usize>,
+    problems_done: u8,
 }
 
-define_characteristic!(BrainLevel);
-define_characteristic!(StaminaLevel);
-define_characteristic!(CharismaLevel);
+impl SubjectStatus {
+    pub fn knowledge(&self) -> BrainLevel {
+        self.knowledge
+    }
+
+    pub fn subject(&self) -> Subject {
+        self.subject
+    }
+
+    pub fn problems_done(&self) -> u8 {
+        self.problems_done
+    }
+
+    pub fn passed(&self) -> bool {
+        self.passed_exam_day_index.is_some()
+    }
+
+    pub fn passed_exam_day<'a>(
+        &self,
+        timetable: &'a timetable::Timetable,
+    ) -> Option<&'a Day> {
+        self.passed_exam_day_index.map(|i| &timetable.days()[i])
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Player {
-    // subject: []
+    subjects: [SubjectStatus; NUM_SUBJECTS],
     god_mode: bool,
+
+    /// Запах чеснока изо рта
     garlic: i16,
+
+    /// Получил ли персонаж дискету с новой версией MMHEROES от Diamond
     has_mmheroes_floppy: bool,
     has_internet: bool,
     is_invited: bool,
@@ -161,20 +203,61 @@ pub struct Player {
     has_ticket: bool,
     knows_djug: bool,
 
+    health: HealthLevel,
+    money: Money,
     brain: BrainLevel,
     stamina: StaminaLevel,
     charisma: CharismaLevel,
-    exams_left: i16,
 }
 
 impl Player {
     fn new(
         god_mode: bool,
+        health: HealthLevel,
         brain: BrainLevel,
         stamina: StaminaLevel,
         charisma: CharismaLevel,
+        mut knowledge: impl FnMut(Subject) -> BrainLevel,
     ) -> Player {
-        Player {
+        let player = Player {
+            subjects: [
+                SubjectStatus {
+                    subject: Subject::AlgebraAndNumberTheory,
+                    knowledge: knowledge(Subject::AlgebraAndNumberTheory),
+                    passed_exam_day_index: None,
+                    problems_done: 0,
+                },
+                SubjectStatus {
+                    subject: Subject::Calculus,
+                    knowledge: knowledge(Subject::Calculus),
+                    passed_exam_day_index: None,
+                    problems_done: 0,
+                },
+                SubjectStatus {
+                    subject: Subject::GeometryAndTopology,
+                    knowledge: knowledge(Subject::GeometryAndTopology),
+                    passed_exam_day_index: None,
+                    problems_done: 0,
+                },
+                SubjectStatus {
+                    subject: Subject::ComputerScience,
+                    knowledge: knowledge(Subject::ComputerScience),
+                    passed_exam_day_index: None,
+                    problems_done: 0,
+                },
+                SubjectStatus {
+                    subject: Subject::English,
+                    knowledge: knowledge(Subject::English),
+                    passed_exam_day_index: None,
+                    problems_done: 0,
+                },
+                SubjectStatus {
+                    subject: Subject::PhysicalEducation,
+                    knowledge: knowledge(Subject::PhysicalEducation),
+                    passed_exam_day_index: None,
+                    problems_done: 0,
+                },
+            ],
             god_mode,
             garlic: 0,
             has_mmheroes_floppy: false,
@@ -185,11 +268,53 @@ impl Player {
             got_stipend: false,
             has_ticket: false,
             knows_djug: false,
+            health,
+            money: Money(0),
             brain,
             stamina,
             charisma,
-            exams_left: 0,
+        };
+
+        for subject in player.subjects.iter() {
+            assert!(subject.knowledge < player.brain);
         }
+
+        player
+    }
+
+    pub fn status_for_subject(&self, subject: Subject) -> &SubjectStatus {
+        &self.subjects[subject as usize]
+    }
+
+    pub fn exams_left(&self) -> usize {
+        self.subjects
+            .iter()
+            .filter(|s| s.passed_exam_day_index.is_none())
+            .count()
+    }
+
+    pub fn health(&self) -> HealthLevel {
+        self.health
+    }
+
+    pub fn money(&self) -> Money {
+        self.money
+    }
+
+    pub fn got_stipend(&self) -> bool {
+        self.got_stipend
+    }
+
+    pub fn brain(&self) -> BrainLevel {
+        self.brain
+    }
+
+    pub fn stamina(&self) -> StaminaLevel {
+        self.stamina
+    }
+
+    pub fn charisma(&self) -> CharismaLevel {
+        self.charisma
     }
 }
 
@@ -237,6 +362,9 @@ pub struct SubjectInfo {
     member0xFA: i16,
     member0xFC: i16, // Минимальный уровень познания?
     member0x100: i16,
+
+    /// Какой уровень знаний соответствует какой оценке по шкале этого препода.
+    assessment_bounds: [(BrainLevel, KnowledgeAssessment); 3],
 }
 
 impl SubjectInfo {
@@ -261,6 +389,7 @@ pub struct Subjects([(Subject, SubjectInfo); NUM_SUBJECTS]);
 
 impl Subjects {
     const fn new() -> Subjects {
+        use KnowledgeAssessment::*;
         use Location::*;
         use Subject::*;
         Subjects([
@@ -275,6 +404,11 @@ impl Subjects {
                     member0xFA: 10,
                     member0xFC: 17,
                     member0x100: 3,
+                    assessment_bounds: [
+                        (BrainLevel(11), Bad),
+                        (BrainLevel(21), Satisfactory),
+                        (BrainLevel(51), Good),
+                    ],
                 },
             ),
             (
@@ -288,6 +422,11 @@ impl Subjects {
                     member0xFA: 8,
                     member0xFC: 14,
                     member0x100: 2,
+                    assessment_bounds: [
+                        (BrainLevel(9), Bad),
+                        (BrainLevel(19), Satisfactory),
+                        (BrainLevel(41), Good),
+                    ],
                 },
             ),
             (
@@ -301,6 +440,11 @@ impl Subjects {
                     member0xFA: 4,
                     member0xFC: 8,
                     member0x100: 3,
+                    assessment_bounds: [
+                        (BrainLevel(6), Bad),
+                        (BrainLevel(11), Satisfactory),
+                        (BrainLevel(31), Good),
+                    ],
                 },
             ),
             (
@@ -314,6 +458,11 @@ impl Subjects {
                     member0xFA: 5,
                     member0xFC: 6,
                     member0x100: 3,
+                    assessment_bounds: [
+                        (BrainLevel(10), Bad),
+                        (BrainLevel(16), Satisfactory),
+                        (BrainLevel(31), Good),
+                    ],
                 },
             ),
             (
@@ -327,6 +476,11 @@ impl Subjects {
                     member0xFA: 7,
                     member0xFC: 10,
                     member0x100: 1,
+                    assessment_bounds: [
+                        (BrainLevel(5), Bad),
+                        (BrainLevel(9), Satisfactory),
+                        (BrainLevel(16), Good),
+                    ],
                 },
             ),
             (
@@ -340,6 +494,11 @@ impl Subjects {
                     member0xFA: 7,
                     member0xFC: 20,
                     member0x100: 1,
+                    assessment_bounds: [
+                        (BrainLevel(5), Bad),
+                        (BrainLevel(9), Satisfactory),
+                        (BrainLevel(16), Good),
+                    ],
                 },
             ),
         ])
@@ -366,14 +525,14 @@ use GameScreen::*;
 
 pub struct Game {
     screen: GameScreen,
-    rng: crate::random::Rng,
+    rng: random::Rng,
     mode: GameMode,
     available_actions: usize,
 }
 
 impl Game {
     pub fn new(mode: GameMode, seed: u64) -> Game {
-        let rng = crate::random::Rng::new(seed);
+        let rng = random::Rng::new(seed);
         Game {
             screen: Start,
             rng,
@@ -414,11 +573,11 @@ impl Game {
             Intro => self.start_game(),
             InitialParameters => self.ding(action),
             Ding(player) => {
-                let state = GameState {
-                    player: player.clone(),
-                    timetable: timetable::Timetable::random(&mut self.rng),
-                    location: Location::Dorm,
-                };
+                let state = GameState::new(
+                    player.clone(),
+                    timetable::Timetable::random(&mut self.rng),
+                    Location::Dorm,
+                );
                 self.view_timetable(state)
             }
             Timetable(state) => {
@@ -485,41 +644,46 @@ impl Game {
     }
 
     fn initialize_player(&mut self, parameters: Action) -> Player {
-        match parameters {
+        let (god_mode, brain, stamina, charisma) = match parameters {
             // "Случайный студент"
-            Action::_0 => Player::new(
+            Action::_0 => (
                 false,
                 BrainLevel(self.rng.random_number_in_range(4..7)),
                 StaminaLevel(self.rng.random_number_in_range(4..7)),
                 CharismaLevel(self.rng.random_number_in_range(4..7)),
             ),
             // "Шибко умный"
-            Action::_1 => Player::new(
+            Action::_1 => (
                 false,
                 BrainLevel(self.rng.random_number_in_range(5..10)),
                 StaminaLevel(self.rng.random_number_in_range(2..5)),
                 CharismaLevel(self.rng.random_number_in_range(2..5)),
             ),
             // "Шибко наглый"
-            Action::_2 => Player::new(
+            Action::_2 => (
                 false,
                 BrainLevel(self.rng.random_number_in_range(2..5)),
                 StaminaLevel(self.rng.random_number_in_range(5..10)),
                 CharismaLevel(self.rng.random_number_in_range(2..5)),
             ),
             // "Шибко общительный"
-            Action::_3 => Player::new(
+            Action::_3 => (
                 false,
                 BrainLevel(self.rng.random_number_in_range(2..5)),
                 StaminaLevel(self.rng.random_number_in_range(2..5)),
                 CharismaLevel(self.rng.random_number_in_range(5..10)),
             ),
             // "GOD-режим"
-            Action::_4 => {
-                Player::new(false, BrainLevel(30), StaminaLevel(30), CharismaLevel(30))
-            }
+            Action::_4 => (true, BrainLevel(30), StaminaLevel(30), CharismaLevel(30)),
             _ => invalid_action!(0, 4),
-        }
+        };
+
+        let health =
+            HealthLevel(self.rng.random_number_with_upper_bound(stamina.0 * 2) + 40);
+
+        Player::new(god_mode, health, brain, stamina, charisma, |_| {
+            self.rng.random_number_with_upper_bound(brain)
+        })
     }
 
     fn scene_router(&mut self, state: GameState) -> usize {

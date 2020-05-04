@@ -96,7 +96,10 @@ mod tests {
             assert_eq!(renderer.write_str("hello"), Ok(()));
             assert_eq!(renderer.move_cursor_to(1, 2), Ok(()));
             assert_eq!(renderer.get_cursor_position(), Ok((0, 0)));
-            assert_eq!(renderer.set_color(Color::WhiteBright, Color::Red), Ok(()));
+            assert_eq!(
+                renderer.set_color(Color::WhiteBright, Color::RedBright),
+                Ok(())
+            );
             assert_eq!(renderer.sleep_ms(Milliseconds(0)), Ok(()));
             assert_eq!(renderer.getch(), Ok(event));
         }
@@ -107,7 +110,7 @@ mod tests {
         assert_eq!(renderer.move_cursor_to(1, 2), Err(ExpectedMoreInput));
         assert_eq!(renderer.get_cursor_position(), Err(ExpectedMoreInput));
         assert_eq!(
-            renderer.set_color(Color::WhiteBright, Color::Red),
+            renderer.set_color(Color::WhiteBright, Color::RedBright),
             Err(ExpectedMoreInput)
         );
         assert_eq!(renderer.sleep_ms(Milliseconds(0)), Err(ExpectedMoreInput));
@@ -125,7 +128,7 @@ mod tests {
         assert_eq!(renderer.move_cursor_to(1, 2), Err(ExpectedMoreInput));
         assert_eq!(renderer.get_cursor_position(), Err(ExpectedMoreInput));
         assert_eq!(
-            renderer.set_color(Color::WhiteBright, Color::Red),
+            renderer.set_color(Color::WhiteBright, Color::RedBright),
             Err(ExpectedMoreInput)
         );
         assert_eq!(renderer.sleep_ms(Milliseconds(0)), Err(ExpectedMoreInput));

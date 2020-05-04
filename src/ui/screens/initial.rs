@@ -42,7 +42,7 @@ pub(in crate::ui) fn display_intro<R: Renderer>(r: &mut R) -> Result<Action, R::
     writeln!(r)?;
     writeln!(r)?;
     writeln!(r)?;
-    r.set_color(Color::Red, Color::Black)?;
+    r.set_color(Color::RedBright, Color::Black)?;
     writeln!(r, "                             ГЕРОИ МАТА И МЕХА ;)")?;
     writeln!(r)?;
     writeln!(r)?;
@@ -87,7 +87,7 @@ pub(in crate::ui) fn display_ding<R: Renderer>(r: &mut R) -> Result<Action, R::E
     r.set_color(Color::YellowBright, Color::Black)?;
     writeln!(r, "ДДДЗЗЗЗЗИИИИИИННННННЬ !!!!")?;
     sleep(r, Milliseconds(700))?;
-    r.set_color(Color::Red, Color::Black)?;
+    r.set_color(Color::RedBright, Color::Black)?;
     writeln!(r, "ДДДДДДЗЗЗЗЗЗЗЗЗЗЗЗЗИИИИИИИИИИННННННННННННЬ !!!!!!!!!!")?;
     sleep(r, Milliseconds(1000))?;
     r.set_color(Color::White, Color::Black)?;

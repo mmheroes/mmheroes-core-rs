@@ -12,11 +12,14 @@ use core::fmt::Display;
 #[repr(C)]
 pub enum Color {
     Black = 0,
+    Red = 1,
     Yellow = 3,
+    Blue = 4,
+    Magenta = 5,
     Cyan = 6,
     White = 7,
     Gray = 8,
-    Red = 9,
+    RedBright = 9,
     Green = 10,
     YellowBright = 11,
     BlueBright = 12,
@@ -74,10 +77,9 @@ impl<'r, R: Renderer> GameUI<'r, R> {
                     self.game.mode(),
                 )?,
                 Ding(_) => screens::initial::display_ding(self.renderer)?,
-                GameScreen::Timetable(state) => screens::timetable::display_timetable(
-                    self.renderer,
-                    state.timetable(),
-                )?,
+                GameScreen::Timetable(state) => {
+                    screens::timetable::display_timetable(self.renderer, state)?
+                }
                 SceneRouter(state) => {
                     screens::scene_router::display_scene_router(self.renderer, state)?
                 }

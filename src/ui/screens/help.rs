@@ -45,7 +45,7 @@ pub(in crate::ui) fn display_what_to_do<R: Renderer>(
     writeln_colored!(White, r, " могут помогать, а могут мешать.")?;
 
     write_colored!(
-        Red,
+        RedBright,
         r,
         "Альтернативные варианты есть почти везде, но они тоже чего-то стоят"
     )?;
@@ -111,7 +111,7 @@ pub(in crate::ui) fn display_about_screen<R: Renderer>(
     writeln_colored!(WhiteBright, r, "НАВЫКИ")?;
     writeln_colored!(YellowBright, r, " СИТУАЦИЯ")?;
     write_colored!(CyanBright, r, " МЕНЮ          ")?;
-    writeln_colored!(Red, r, "РАСПИСАНИЕ")?;
+    writeln_colored!(RedBright, r, "РАСПИСАНИЕ")?;
 
     help_dialog(r)
 }
@@ -162,7 +162,7 @@ pub(in crate::ui) fn display_where_to_go_and_why<R: Renderer>(
     writeln_colored!(White, r, ".")?;
 
     write_colored!(White, r, "Кроме того, ")?;
-    write_colored!(Red, r, "поездка отнимает и здоровье тоже")?;
+    write_colored!(RedBright, r, "поездка отнимает и здоровье тоже")?;
     writeln_colored!(White, r, ".")?;
 
     help_dialog(r)

@@ -25,14 +25,14 @@ pub(in crate::ui) fn display_game_end<R: Renderer>(
 
     writeln_colored!(MagentaBright, r, "Уффффф! Во всяком случае, ты еще живой.")?;
     writeln!(r)?;
-    write_colored!(Red, r, "У тебя нет целых ")?;
+    write_colored!(RedBright, r, "У тебя нет целых ")?;
     write_colored!(
         WhiteBright,
         r,
         "{}",
         6 /* TODO: actual number of exams remaining */
     )?;
-    writeln_colored!(Red, r, " зачетов!")?;
+    writeln_colored!(RedBright, r, " зачетов!")?;
     writeln_colored!(MagentaBright, r, "ТЫ ОТЧИСЛЕН!")?;
 
     wait_for_any_key(r)
@@ -86,7 +86,7 @@ pub(in crate::ui) fn display_disclaimer<R: Renderer>(
     writeln!(r, "    реалистичность взглядов автора на реальность.")?;
     writeln!(r)?;
     writeln!(r)?;
-    r.set_color(Color::Red, Color::Black)?;
+    r.set_color(Color::RedBright, Color::Black)?;
     writeln!(
         r,
         "*.) Если вы нашли в данной программе ошибку (любую, включая опечатки),"
