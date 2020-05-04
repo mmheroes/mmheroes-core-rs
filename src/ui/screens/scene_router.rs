@@ -11,11 +11,26 @@ pub(in crate::ui) fn display_scene_router<R: Renderer>(
     display_short_today_timetable(r, today, state.player())?;
     r.set_color(Color::White, Color::Black)?;
     r.move_cursor_to(7, 0)?;
-    let mut options = stack_allocated_vec![(&str, Color); 12];
+    let mut options = stack_allocated_vec![(&str, Color); MAX_OPTIONS_IN_SCENE_ROUTER];
     match state.location() {
         Location::PUNK => todo!(),
         Location::PDMI => todo!(),
-        Location::ComputerClass => todo!(),
+        Location::ComputerClass => {
+            writeln!(r, "Ты в компьютерном классе. Что делать?")?;
+            // TODO: Здесь может быть Климов
+            options.push(("Пойти в общагу", Color::CyanBright));
+            options.push(("Покинуть класс", Color::CyanBright));
+            options.push(("Поехать в ПОМИ", Color::CyanBright));
+            options.push(("Пойти в мавзолей", Color::CyanBright));
+            if state.player().has_internet() {
+                options.push(("Провести 1 час в Inet'е", Color::CyanBright));
+            }
+            // TODO: Здесь могут быть однокурсники и Кузьменко
+            if state.player().has_mmheroes_floppy() {
+                options.push(("Поиграть в MMHEROES", Color::CyanBright));
+            }
+            options.push(("С меня хватит!", Color::BlueBright));
+        }
         Location::Dorm => {
             writeln!(r, "Ты в общаге. Что делать?")?;
             options.push(("Готовиться", Color::CyanBright));
@@ -28,7 +43,15 @@ pub(in crate::ui) fn display_scene_router<R: Renderer>(
             options.push(("С меня хватит!", Color::BlueBright));
             options.push(("ЧТО ДЕЛАТЬ ???", Color::BlueBright));
         }
-        Location::Mausoleum => todo!(),
+        Location::Mausoleum => {
+            writeln!(r, "Ты в мавзолее. Что делать?")?;
+            options.push(("Идти в ПУНК", Color::CyanBright));
+            options.push(("Поехать в ПОМИ", Color::CyanBright));
+            options.push(("Идти в общагу", Color::CyanBright));
+            options.push(("Отдыхать", Color::CyanBright));
+            // TODO: Здесь могут быть однокурсники
+            options.push(("С меня хватит!", Color::BlueBright));
+        }
     }
     r.move_cursor_to(9, 0)?;
     if state.failed_attempt_to_sleep() {

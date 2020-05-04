@@ -58,6 +58,78 @@ macro_rules! invalid_action {
     };
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum CauseOfDeath {
+    /// Умер по пути на факультет.
+    OnTheWayToPUNK,
+
+    /// Умер по пути в мавзолей.
+    OnTheWayToMausoleum,
+
+    /// Умер по пути домой.
+    OnTheWayToDorm,
+
+    /// Упал с лестницы у главного входа.
+    FellFromStairs,
+
+    /// Сгорел на работе
+    Burnout,
+
+    /// Заучился.
+    Overstudied,
+
+    /// Зубрежка до добра не доводит!
+    StudiedTooWell,
+
+    /// Не смог расстаться с компьютером.
+    CouldntLeaveTheComputer,
+
+    /// В электричке нашли бездыханное тело.
+    CorpseFoundInTheTrain,
+
+    /// Контролеры жизни лишили.
+    KilledByInspectors,
+
+    /// Заснул в электричке и не проснулся.
+    FellAsleepInTheTrain,
+
+    /// Раздвоение ложной личности.
+    SplitPersonality,
+
+    /// Пивной алкоголизм, батенька...
+    BeerAlcoholism,
+
+    /// Спился.
+    DrankTooMuch,
+
+    /// Губит людей не пиво, а избыток пива.
+    DrankTooMuchBeer,
+
+    /// Альтруизм не довел до добра.
+    Altruism,
+
+    /// Превратился в овощ.
+    TurnedToVegetable,
+
+    /// <препод> замучил.
+    TorturedByProfessor(Subject),
+
+    /// Бурно прогрессирующая паранойя
+    Paranoia,
+
+    /// Время вышло.
+    TimeOut,
+
+    /// Вышел сам.
+    Suicide,
+
+    /// Раздавлен безжалостной ошибкой в программе.
+    SoftwareBug,
+}
+
+/// Максимальное число возможных вариантов на главном экране.
+pub const MAX_OPTIONS_IN_SCENE_ROUTER: usize = 12;
+
 pub enum GameScreen {
     /// Начальное состояние. Ему не соответствует никакой экран.
     Start,
@@ -304,65 +376,104 @@ impl Game {
 
     fn scene_router(&mut self, state: GameState) -> usize {
         // TODO: assert that no exam is in progress
-        match state.location() {
+        let location = state.location;
+        self.screen = GameScreen::SceneRouter(state);
+        match location {
             Location::PDMI => todo!(),
             Location::PUNK => todo!(),
-            Location::Mausoleum => todo!(),
-            Location::Dorm => {
-                self.screen = GameScreen::SceneRouter(state);
-                9
+            Location::Mausoleum => {
+                4 // TODO: This number should be based on what NPCs are available
             }
+            Location::Dorm => 9,
             Location::ComputerClass => todo!(),
         }
     }
 
-    fn handle_scene_router_action(&mut self, mut state: GameState, action: Action) -> usize {
-        if state.failed_attempt_to_sleep {
-            assert!(state.location == Location::Dorm,
-                    "Если игрок попытался уснуть, он должен был быть в общаге.");
-            if action == Action::_0 {
-                state.failed_attempt_to_sleep = false;
-                return self.scene_router(state)
-            } else {
-                invalid_action!(0, 0)
-            }
-        }
+    fn handle_scene_router_action(&mut self, state: GameState, action: Action) -> usize {
         match state.location() {
             Location::PUNK => todo!(),
             Location::PDMI => todo!(),
             Location::ComputerClass => todo!(),
-            Location::Dorm => match action {
-                // Готовиться
-                Action::_0 => todo!("Study"),
-                // Посмотреть расписание
-                Action::_1 => self.view_timetable(state),
-                // Отдыхать
-                Action::_2 => self.rest_in_dorm(state),
-                // Лечь спать
-                Action::_3 => self.try_to_sleep(state),
-                // Пойти на факультет
-                Action::_4 => todo!("Go to PUNK"),
-                // Поехать в ПОМИ
-                Action::_5 => todo!("Go to PDMI"),
-                // Пойти в мавзолей
-                Action::_6 => todo!("Go to mausoleum"),
-                // С меня хватит!
-                Action::_7 => self.i_am_done(state),
-                // ЧТО ДЕЛАТЬ ???
-                Action::_8 => {
-                    self.screen = WhatToDo(state);
-                    HELP_SCREEN_OPTION_COUNT
-                }
-                _ => invalid_action!(0, 8),
-            },
-            Location::Mausoleum => todo!(),
+            Location::Dorm => self.handle_dorm_action(state, action),
+            Location::Mausoleum => self.handle_mausoleum_action(state, action),
         }
+    }
+
+    fn handle_dorm_action(&mut self, mut state: GameState, action: Action) -> usize {
+        assert!(state.location == Location::Dorm);
+        match action {
+            // Готовиться
+            Action::_0 => {
+                if state.failed_attempt_to_sleep {
+                    state.failed_attempt_to_sleep = false;
+                    self.scene_router(state)
+                } else {
+                    todo!("Study")
+                }
+            }
+            // Посмотреть расписание
+            Action::_1 => self.view_timetable(state),
+            // Отдыхать
+            Action::_2 => self.rest_in_dorm(state),
+            // Лечь спать
+            Action::_3 => self.try_to_sleep(state),
+            // Пойти на факультет
+            Action::_4 => {
+                state.location = Location::PUNK;
+                self.decrease_health(
+                    3,
+                    state,
+                    CauseOfDeath::OnTheWayToPUNK,
+                    /*if_alive=*/ |game, state| game.scene_router(state),
+                )
+            }
+            // Поехать в ПОМИ
+            Action::_5 => todo!("Go to PDMI"),
+            // Пойти в мавзолей
+            Action::_6 => {
+                state.location = Location::Mausoleum;
+                self.decrease_health(
+                    3,
+                    state,
+                    CauseOfDeath::OnTheWayToMausoleum,
+                    /*if_alive=*/ |game, state| game.scene_router(state),
+                )
+            }
+            // С меня хватит!
+            Action::_7 => self.i_am_done(state),
+            // ЧТО ДЕЛАТЬ ???
+            Action::_8 => {
+                self.screen = WhatToDo(state);
+                HELP_SCREEN_OPTION_COUNT
+            }
+            _ => invalid_action!(0, 8),
+        }
+    }
+
+    fn handle_mausoleum_action(&mut self, mut state: GameState, action: Action) -> usize {
+        todo!()
     }
 
     fn view_timetable(&mut self, state: GameState) -> usize {
         self.screen = Timetable(state);
         // "Нажми любую клавишу ..."
         1
+    }
+
+    fn decrease_health<F: FnOnce(&mut Game, GameState) -> usize>(
+        &mut self,
+        delta: u8,
+        mut state: GameState,
+        cause_of_death: CauseOfDeath,
+        if_alive: F,
+    ) -> usize {
+        if state.player.health <= HealthLevel(delta) {
+            state.player.cause_of_death = Some(cause_of_death);
+            self.game_end(state)
+        } else {
+            state.player.health -= delta;
+            if_alive(self, state)
+        }
     }
 
     fn try_to_sleep(&mut self, mut state: GameState) -> usize {
@@ -375,7 +486,7 @@ impl Game {
         }
     }
 
-    fn go_to_sleep(&mut self, mut state: GameState) -> usize {
+    fn go_to_sleep(&mut self, _state: GameState) -> usize {
         todo!()
     }
 
@@ -383,7 +494,9 @@ impl Game {
         match state.location {
             Location::PUNK => todo!("sub_1E907"),
             Location::PDMI => todo!("sub_1E7F8"),
-            Location::ComputerClass => unreachable!("Компьютерный класс уже должен быть закрыт в полночь!"),
+            Location::ComputerClass => {
+                unreachable!("Компьютерный класс уже должен быть закрыт в полночь!")
+            }
             Location::Dorm => self.go_to_sleep(state),
             Location::Mausoleum => todo!("sub_1E993"),
         }
@@ -396,7 +509,7 @@ impl Game {
         if state.current_time.is_midnight() {
             state.current_day_index += 1;
             state.current_time = Time(0);
-            return self.midnight(state)
+            return self.midnight(state);
         }
 
         self.scene_router(state)

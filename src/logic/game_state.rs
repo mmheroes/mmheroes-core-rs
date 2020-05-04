@@ -107,6 +107,8 @@ pub struct Player {
     pub(in crate::logic) brain: BrainLevel,
     pub(in crate::logic) stamina: StaminaLevel,
     pub(in crate::logic) charisma: CharismaLevel,
+
+    pub(in crate::logic) cause_of_death: Option<CauseOfDeath>,
 }
 
 impl Player {
@@ -172,6 +174,7 @@ impl Player {
             brain,
             stamina,
             charisma,
+            cause_of_death: None,
         };
 
         for subject in player.subjects.iter() {
@@ -190,6 +193,14 @@ impl Player {
             .iter()
             .filter(|s| s.passed_exam_day_index.is_none())
             .count()
+    }
+
+    pub fn has_mmheroes_floppy(&self) -> bool {
+        self.has_mmheroes_floppy
+    }
+
+    pub fn has_internet(&self) -> bool {
+        self.has_internet
     }
 
     pub fn health(&self) -> HealthLevel {
@@ -214,6 +225,10 @@ impl Player {
 
     pub fn charisma(&self) -> CharismaLevel {
         self.charisma
+    }
+
+    pub fn cause_of_death(&self) -> Option<CauseOfDeath> {
+        self.cause_of_death
     }
 }
 

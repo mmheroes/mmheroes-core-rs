@@ -44,7 +44,7 @@ impl Add<Duration> for Time {
     }
 }
 
-impl AddAssign<Duration> for Time  {
+impl AddAssign<Duration> for Time {
     fn add_assign(&mut self, rhs: Duration) {
         *self = *self + rhs
     }
