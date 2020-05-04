@@ -9,19 +9,27 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define MMHEROES_HELP_SCREEN_OPTION_COUNT 7
+
 #define MMHEROES_NUM_DAYS 6
 
 #define MMHEROES_NUM_SUBJECTS 6
 
 typedef enum {
   MMHEROES_Color_Black = 0,
+  MMHEROES_Color_Red = 1,
   MMHEROES_Color_Yellow = 3,
+  MMHEROES_Color_Blue = 4,
+  MMHEROES_Color_Magenta = 5,
+  MMHEROES_Color_Cyan = 6,
   MMHEROES_Color_White = 7,
   MMHEROES_Color_Gray = 8,
-  MMHEROES_Color_Red = 9,
+  MMHEROES_Color_RedBright = 9,
   MMHEROES_Color_Green = 10,
   MMHEROES_Color_YellowBright = 11,
-  MMHEROES_Color_Cyan = 14,
+  MMHEROES_Color_BlueBright = 12,
+  MMHEROES_Color_MagentaBright = 13,
+  MMHEROES_Color_CyanBright = 14,
   MMHEROES_Color_WhiteBright = 15,
 } MMHEROES_Color;
 
