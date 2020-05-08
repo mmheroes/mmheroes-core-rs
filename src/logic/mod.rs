@@ -14,7 +14,6 @@ use crate::random;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Action {
-    Exit = -1,
     _0,
     _1,
     _2,
@@ -26,13 +25,12 @@ pub enum Action {
     _8,
 }
 
-impl core::convert::TryFrom<i16> for Action {
+impl core::convert::TryFrom<u8> for Action {
     type Error = ();
 
-    fn try_from(value: i16) -> Result<Self, Self::Error> {
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
         use Action::*;
         match value {
-            -1 => Ok(Exit),
             0 => Ok(_0),
             1 => Ok(_1),
             2 => Ok(_2),
@@ -131,13 +129,6 @@ pub enum CauseOfDeath {
 pub const MAX_OPTIONS_IN_SCENE_ROUTER: usize = 12;
 
 pub enum GameScreen {
-    /// Начальное состояние. Ему не соответствует никакой экран.
-    Start,
-
-    /// Терминальное состояние. Ему тоже не соответствует никакой экран.
-    /// Игра завершена безвозвратно.
-    Terminal,
-
     /// Самый первый экран, который видет пользователь.
     Intro,
 
@@ -183,6 +174,10 @@ pub enum GameScreen {
 
     /// Экран помощи с информацией о программе.
     AboutThisProgram(GameState),
+
+    /// Терминальное состояние. Ему тоже соответствует никакой экран.
+    /// Игра завершена безвозвратно.
+    Terminal,
 }
 
 /// The game mode selector.
@@ -222,7 +217,7 @@ impl Game {
     pub fn new(mode: GameMode, seed: u64) -> Game {
         let rng = random::Rng::new(seed);
         Game {
-            screen: Start,
+            screen: Intro,
             rng,
             mode,
             available_actions: 1,
@@ -235,6 +230,26 @@ impl Game {
 
     pub fn mode(&self) -> GameMode {
         self.mode
+    }
+
+    /// Возвращает текущее состояние игры, если оно доступно.
+    /// Оно может быть недоступно, например, если игра ещё не началась
+    /// или уже закончилась.
+    pub fn game_state(&self) -> Option<&GameState> {
+        match &self.screen {
+            Timetable(state)
+            | SceneRouter(state)
+            | IAmDone(state)
+            | GameEnd(state)
+            | WhatToDo(state)
+            | AboutScreen(state)
+            | WhereToGoAndWhy(state)
+            | AboutProfessors(state)
+            | AboutCharacters(state)
+            | AboutThisProgram(state) => Some(state),
+            Intro | InitialParameters | Ding(_) | WannaTryAgain | Disclaimer
+            | Terminal => None,
+        }
     }
 
     pub fn available_actions(&self) -> usize {
@@ -252,11 +267,6 @@ impl Game {
     /// Accepts an action, returns the number of actions available in the updated state.
     fn _perform_action(&mut self, action: Action) -> usize {
         match &self.screen {
-            Start => {
-                self.screen = Intro;
-                // Начальный экран. "Нажми любую клавишу".
-                1
-            }
             Terminal => panic!("Attempted to perform an action in terminal state"),
             Intro => self.start_game(),
             InitialParameters => self.ding(action),
@@ -446,7 +456,6 @@ impl Game {
                 self.screen = WhatToDo(state);
                 HELP_SCREEN_OPTION_COUNT
             }
-            _ => invalid_action!(0, 8),
         }
     }
 

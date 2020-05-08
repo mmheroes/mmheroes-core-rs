@@ -6,10 +6,11 @@ use core::ops::{Add, AddAssign, Sub};
 
 pub const NUM_DAYS: usize = 6;
 
-/// A number of hours passed since midnight. Has semantics of a timestamp.
-/// Instances of this type cannot be added to each other, but you can add
-/// an instance of `Duration` and get some new `Time`.
+/// Количество часов, прошедших с полуночи. Имеет семантику таймстэмпа, то есть,
+/// экземпляры этого типа нельзя складывать, но к ним можно прибавлять экземпляры
+/// типа `Duration` и получать новый экземпляр типа `Time`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[repr(transparent)]
 pub struct Time(pub u8);
 
 pub const WORKDAY_BEGINS: Time = Time(9);
@@ -30,6 +31,7 @@ impl Display for Time {
 
 /// A number of hours.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[repr(transparent)]
 pub struct Duration(pub i8);
 
 impl Add<Duration> for Time {

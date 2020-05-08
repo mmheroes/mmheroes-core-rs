@@ -25,6 +25,9 @@ dependencies = [
 [[package]]
 name = "mmheroes-core"
 version = "0.1.0"
+dependencies = [
+ "unicode-segmentation",
+]
 
 [[package]]
 name = "mmheroes-core-fuzz"
@@ -33,3 +36,9 @@ dependencies = [
  "libfuzzer-sys",
  "mmheroes-core",
 ]
+
+[[package]]
+name = "unicode-segmentation"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e83e153d1053cbb5a118eeff7fd5be06ed99153f00dbcd8ae310c5fb2b22edc0"

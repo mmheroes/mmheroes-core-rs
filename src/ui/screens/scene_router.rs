@@ -1,22 +1,23 @@
 use crate::logic::*;
+use crate::ui::renderer::Line;
 use crate::ui::*;
 
-pub(in crate::ui) fn display_scene_router<R: Renderer>(
-    r: &mut R,
+pub(in crate::ui) fn display_scene_router(
+    r: &mut Renderer,
     state: &GameState,
-) -> Result<Action, R::Error> {
+) -> WaitingState {
     let today = state.current_day();
-    display_character_stats(r, today, state.current_time(), state.player())?;
-    display_knowledge(r, state.player())?;
-    display_short_today_timetable(r, today, state.player())?;
-    r.set_color(Color::White, Color::Black)?;
-    r.move_cursor_to(7, 0)?;
-    let mut options = stack_allocated_vec![(&str, Color); MAX_OPTIONS_IN_SCENE_ROUTER];
+    display_character_stats(r, today, state.current_time(), state.player());
+    display_knowledge(r, state.player());
+    display_short_today_timetable(r, today, state.player());
+    r.set_color(Color::White, Color::Black);
+    r.move_cursor_to(7, 0);
+    let mut options = tiny_vec![capacity: 16];
     match state.location() {
         Location::PUNK => todo!(),
         Location::PDMI => todo!(),
         Location::ComputerClass => {
-            writeln!(r, "Ты в компьютерном классе. Что делать?")?;
+            writeln!(r, "Ты в компьютерном классе. Что делать");
             // TODO: Здесь может быть Климов
             options.push(("Пойти в общагу", Color::CyanBright));
             options.push(("Покинуть класс", Color::CyanBright));
@@ -32,7 +33,7 @@ pub(in crate::ui) fn display_scene_router<R: Renderer>(
             options.push(("С меня хватит!", Color::BlueBright));
         }
         Location::Dorm => {
-            writeln!(r, "Ты в общаге. Что делать?")?;
+            writeln!(r, "Ты в общаге. Что делать");
             options.push(("Готовиться", Color::CyanBright));
             options.push(("Посмотреть расписание", Color::CyanBright));
             options.push(("Отдыхать", Color::CyanBright));
@@ -41,10 +42,10 @@ pub(in crate::ui) fn display_scene_router<R: Renderer>(
             options.push(("Поехать в ПОМИ", Color::CyanBright));
             options.push(("Пойти в мавзолей", Color::CyanBright));
             options.push(("С меня хватит!", Color::BlueBright));
-            options.push(("ЧТО ДЕЛАТЬ ???", Color::BlueBright));
+            options.push(("ЧТО ДЕЛАТЬ ", Color::BlueBright));
         }
         Location::Mausoleum => {
-            writeln!(r, "Ты в мавзолее. Что делать?")?;
+            writeln!(r, "Ты в мавзолее. Что делать");
             options.push(("Идти в ПУНК", Color::CyanBright));
             options.push(("Поехать в ПОМИ", Color::CyanBright));
             options.push(("Идти в общагу", Color::CyanBright));
@@ -53,105 +54,98 @@ pub(in crate::ui) fn display_scene_router<R: Renderer>(
             options.push(("С меня хватит!", Color::BlueBright));
         }
     }
-    r.move_cursor_to(9, 0)?;
+    r.move_cursor_to(9, 0);
     if state.failed_attempt_to_sleep() {
         assert!(state.location() == Location::Dorm);
-        inactive_dialog(r, &options)?;
-        r.move_cursor_to(21, 0)?;
-        write_colored!(White, r, "Тебя чего-то не тянет по-спать...")?;
+        inactive_dialog(r, &options);
+        r.move_cursor_to(21, 0);
+        write_colored!(White, r, "Тебя чего-то не тянет по-спать...");
         wait_for_any_key(r)
     } else {
-        dialog(r, &options)
+        dialog(r, options)
     }
 }
 
-fn display_character_stats<R: Renderer>(
-    r: &mut R,
-    today: &Day,
-    now: Time,
-    player: &Player,
-) -> Result<(), R::Error> {
-    write_colored!(White, r, "Сегодня ")?;
+fn display_character_stats(r: &mut Renderer, today: &Day, now: Time, player: &Player) {
+    write_colored!(White, r, "Сегодня ");
     // Первый день недели — 22-е мая.
-    write_colored!(WhiteBright, r, "{}", today.index() + 22)?;
-    write_colored!(White, r, "е мая; ")?;
-    write_colored!(WhiteBright, r, "{}:00", now)?;
-    r.move_cursor_to(0, 25)?;
-    writeln_colored!(MagentaBright, r, "Версия gamma3.14")?;
+    write_colored!(WhiteBright, r, "{}", today.index() + 22);
+    write_colored!(White, r, "е мая; ");
+    write_colored!(WhiteBright, r, "{}:00", now);
+    r.move_cursor_to(0, 25);
+    writeln_colored!(MagentaBright, r, "Версия gamma3.14");
 
-    write_colored!(White, r, "Самочувствие: ")?;
+    write_colored!(White, r, "Самочувствие: ");
     match player.health().assessment() {
-        HealthAssessment::LivingDead => writeln_colored!(Magenta, r, "живой труп")?,
-        HealthAssessment::TimeToDie => writeln_colored!(Red, r, "пора помирать ...")?,
-        HealthAssessment::Bad => writeln_colored!(Red, r, "плохое")?,
-        HealthAssessment::SoSo => writeln_colored!(YellowBright, r, "так себе")?,
-        HealthAssessment::Average => writeln_colored!(YellowBright, r, "среднее")?,
-        HealthAssessment::Good => writeln_colored!(Green, r, "хорошее")?,
-        HealthAssessment::Great => writeln_colored!(Green, r, "отличное")?,
+        HealthAssessment::LivingDead => writeln_colored!(Magenta, r, "живой труп"),
+        HealthAssessment::TimeToDie => writeln_colored!(Red, r, "пора помирать ..."),
+        HealthAssessment::Bad => writeln_colored!(Red, r, "плохое"),
+        HealthAssessment::SoSo => writeln_colored!(YellowBright, r, "так себе"),
+        HealthAssessment::Average => writeln_colored!(YellowBright, r, "среднее"),
+        HealthAssessment::Good => writeln_colored!(Green, r, "хорошее"),
+        HealthAssessment::Great => writeln_colored!(Green, r, "отличное"),
     }
 
-    write_colored!(White, r, "Финансы: ")?;
+    write_colored!(White, r, "Финансы: ");
     if player.money() > Money::zero() {
-        write_colored!(WhiteBright, r, "{}", player.money())?;
-        writeln_colored!(White, r, " руб.")?;
+        write_colored!(WhiteBright, r, "{}", player.money());
+        writeln_colored!(White, r, " руб.");
     } else if !player.got_stipend() {
-        writeln_colored!(RedBright, r, "Надо получить деньги за май...")?;
+        writeln_colored!(RedBright, r, "Надо получить деньги за май...");
     } else {
-        writeln_colored!(White, r, "Ты успел потратить все деньги.")?;
+        writeln_colored!(White, r, "Ты успел потратить все деньги.");
     }
 
     match player.brain().assessment() {
         BrainAssessment::ClinicalBrainDeath => {
-            writeln_colored!(Magenta, r, "Клиническая смерть мозга")?
+            writeln_colored!(Magenta, r, "Клиническая смерть мозга")
         }
         BrainAssessment::BrainIsAlmostNonFunctioning => {
-            writeln_colored!(Magenta, r, "Голова просто никакая")?
+            writeln_colored!(Magenta, r, "Голова просто никакая")
         }
         BrainAssessment::ThinkingIsAlmostImpossible => {
-            writeln_colored!(RedBright, r, "Думать практически невозможно")?
+            writeln_colored!(RedBright, r, "Думать практически невозможно")
         }
         BrainAssessment::ThinkingIsDifficult => {
-            writeln_colored!(RedBright, r, "Думать трудно")?
+            writeln_colored!(RedBright, r, "Думать трудно")
         }
         BrainAssessment::BrainIsAlmostOK => {
-            writeln_colored!(YellowBright, r, "Голова почти в норме")?
+            writeln_colored!(YellowBright, r, "Голова почти в норме")
         }
-        BrainAssessment::BrainIsOK => {
-            writeln_colored!(YellowBright, r, "Голова в норме")?
-        }
-        BrainAssessment::BrainIsFresh => writeln_colored!(Green, r, "Голова свежая")?,
+        BrainAssessment::BrainIsOK => writeln_colored!(YellowBright, r, "Голова в норме"),
+        BrainAssessment::BrainIsFresh => writeln_colored!(Green, r, "Голова свежая"),
         BrainAssessment::ExtraordinaryEaseOfThought => {
-            writeln_colored!(Green, r, "Легкость в мыслях необыкновенная")?
+            writeln_colored!(Green, r, "Легкость в мыслях необыкновенная")
         }
         BrainAssessment::ContactTheDeveloper => {
-            writeln_colored!(CyanBright, r, "Обратитесь к разработчику ;)")?
+            writeln_colored!(CyanBright, r, "Обратитесь к разработчику ;)")
         }
     }
 
     match player.stamina().assessment() {
         StaminaAssessment::MamaTakeMeBack => {
-            writeln_colored!(Magenta, r, "Мама, роди меня обратно!")?
+            writeln_colored!(Magenta, r, "Мама, роди меня обратно!")
         }
         StaminaAssessment::CompletelyOverstudied => {
-            writeln_colored!(Magenta, r, "Окончательно заучился")?
+            writeln_colored!(Magenta, r, "Окончательно заучился")
         }
         StaminaAssessment::ICantTakeIt => {
-            writeln_colored!(RedBright, r, "Я так больше немогууу!")?
+            writeln_colored!(RedBright, r, "Я так больше немогууу!")
         }
         StaminaAssessment::IWishItAllEndedSoon => {
-            writeln_colored!(RedBright, r, "Скорее бы все это кончилось...")?
+            writeln_colored!(RedBright, r, "Скорее бы все это кончилось...")
         }
         StaminaAssessment::ALittleMoreAndThenRest => {
-            writeln_colored!(YellowBright, r, "Еще немного и пора отдыхать")?
+            writeln_colored!(YellowBright, r, "Еще немного и пора отдыхать")
         }
         StaminaAssessment::ABitTired => {
-            writeln_colored!(YellowBright, r, "Немного устал")?
+            writeln_colored!(YellowBright, r, "Немного устал")
         }
         StaminaAssessment::ReadyForEverything => {
-            writeln_colored!(Green, r, "Готов к труду и обороне")?
+            writeln_colored!(Green, r, "Готов к труду и обороне")
         }
         StaminaAssessment::GreatThingsAwaitUs => {
-            writeln_colored!(Green, r, "Нас ждут великие дела")?
+            writeln_colored!(Green, r, "Нас ждут великие дела")
         }
     }
 
@@ -190,23 +184,23 @@ fn color_for_assessment(assessment: KnowledgeAssessment) -> Color {
     }
 }
 
-fn display_knowledge<R: Renderer>(r: &mut R, player: &Player) -> Result<(), R::Error> {
+fn display_knowledge(r: &mut Renderer, player: &Player) {
     for (i, (subject, _)) in SUBJECTS.iter().enumerate() {
-        let line = i as i32;
-        r.move_cursor_to(line, 45)?;
-        write_colored!(CyanBright, r, "{}", subject_name(*subject))?;
+        let line = i as Line;
+        r.move_cursor_to(line, 45);
+        write_colored!(CyanBright, r, "{}", subject_name(*subject));
 
         let knowledge = player.status_for_subject(*subject).knowledge();
-        r.move_cursor_to(line, 67)?;
+        r.move_cursor_to(line, 67);
         r.set_color(
             color_for_assessment(knowledge.absolute_knowledge_assessment()),
             Color::Black,
-        )?;
-        write!(r, "{}", knowledge)?;
+        );
+        write!(r, "{}", knowledge);
 
         let relative_assessment = knowledge.relative_knowledge_assessment(*subject);
-        r.move_cursor_to(line, 71)?;
-        r.set_color(color_for_assessment(relative_assessment), Color::Black)?;
+        r.move_cursor_to(line, 71);
+        r.set_color(color_for_assessment(relative_assessment), Color::Black);
         let assessment_description = match relative_assessment {
             KnowledgeAssessment::Bad => "Плохо",
             KnowledgeAssessment::Satisfactory => "Удовл.",
@@ -214,37 +208,32 @@ fn display_knowledge<R: Renderer>(r: &mut R, player: &Player) -> Result<(), R::E
             KnowledgeAssessment::VeryGood => unreachable!(),
             KnowledgeAssessment::Excellent => "Отлично",
         };
-        write!(r, "{}", assessment_description)?;
+        write!(r, "{}", assessment_description);
     }
-    Ok(())
 }
 
-fn display_short_today_timetable<R: Renderer>(
-    r: &mut R,
-    today: &Day,
-    player: &Player,
-) -> Result<(), R::Error> {
+fn display_short_today_timetable(r: &mut Renderer, today: &Day, player: &Player) {
     for (i, (subject, subject_info)) in SUBJECTS.iter().enumerate() {
-        let line = (i as i32) + 9;
-        r.move_cursor_to(line, 50)?;
+        let line = (i as Line) + 9;
+        r.move_cursor_to(line, 50);
         let passed = player.status_for_subject(*subject).passed();
-        let set_color_if_passed = |r: &mut R, if_passed, if_not_passed| {
+        let set_color_if_passed = |r: &mut Renderer, if_passed, if_not_passed| {
             r.set_color(if passed { if_passed } else { if_not_passed }, Color::Black)
         };
-        set_color_if_passed(r, Color::Blue, Color::CyanBright)?;
-        write!(r, "{}", subject_short_name(*subject))?;
-        r.move_cursor_to(line, 58)?;
-        set_color_if_passed(r, Color::Magenta, Color::RedBright)?;
+        set_color_if_passed(r, Color::Blue, Color::CyanBright);
+        write!(r, "{}", subject_short_name(*subject));
+        r.move_cursor_to(line, 58);
+        set_color_if_passed(r, Color::Magenta, Color::RedBright);
         if let Some(exam) = today.exam(*subject) {
-            write!(r, "{}", exam.location())?;
-            set_color_if_passed(r, Color::Gray, Color::WhiteBright)?;
-            r.move_cursor_to(line, 64)?;
-            write!(r, "{}-{}", exam.from(), exam.to())?;
+            write!(r, "{}", exam.location());
+            set_color_if_passed(r, Color::Gray, Color::WhiteBright);
+            r.move_cursor_to(line, 64);
+            write!(r, "{}-{}", exam.from(), exam.to());
         } else {
-            write!(r, "----")?;
+            write!(r, "----");
         }
 
-        r.move_cursor_to(line, 72)?;
+        r.move_cursor_to(line, 72);
         let problems_done = player.status_for_subject(*subject).problems_done();
         let problems_required = subject_info.required_problems();
         let problems_color = if problems_done == 0 {
@@ -254,9 +243,8 @@ fn display_short_today_timetable<R: Renderer>(
         } else {
             Color::Green
         };
-        r.set_color(problems_color, Color::Black)?;
+        r.set_color(problems_color, Color::Black);
 
-        write!(r, "{}/{}", problems_done, problems_required)?;
+        write!(r, "{}/{}", problems_done, problems_required);
     }
-    Ok(())
 }

@@ -10,6 +10,9 @@ version = "0.1.0"
 authors = ["Sergej Jaskiewicz <jaskiewiczs@icloud.com>"]
 edition = "2018"
 
+[dependencies]
+unicode-segmentation = "1.6.0"
+
 [features]
 default = ["std"]
 std = []
