@@ -75,6 +75,8 @@ typedef struct MMHEROES_Game MMHEROES_Game;
 
 typedef struct MMHEROES_GameUI MMHEROES_GameUI;
 
+typedef struct MMHEROES_InputRecorder_InputRecorderSink MMHEROES_InputRecorder_InputRecorderSink;
+
 typedef void *MMHEROES_AllocatorContext;
 
 /**
@@ -97,6 +99,11 @@ typedef void (*MMHEROES_Deallocator)(MMHEROES_AllocatorContext, void*, uintptr_t
  * типа `Duration` и получать новый экземпляр типа `Time`.
  */
 typedef uint8_t MMHEROES_Time;
+
+typedef struct {
+  void *context;
+  bool (*sink)(void*, const uint8_t*, uintptr_t);
+} MMHEROES_InputRecorderSink;
 
 typedef struct {
   const uint8_t *buf;
@@ -190,6 +197,19 @@ void mmheroes_game_ui_destroy(MMHEROES_GameUI *game_ui,
                               MMHEROES_AllocatorContext deallocator_context,
                               MMHEROES_Deallocator deallocator);
 
+MMHEROES_InputRecorder_InputRecorderSink *mmheroes_input_recorder_create(MMHEROES_InputRecorderSink *sink,
+                                                                         MMHEROES_AllocatorContext allocator_context,
+                                                                         MMHEROES_Allocator allocator);
+
+void mmheroes_input_recorder_destroy(MMHEROES_InputRecorder_InputRecorderSink *recorder,
+                                     MMHEROES_AllocatorContext deallocator_context,
+                                     MMHEROES_Deallocator deallocator);
+
+bool mmheroes_input_recorder_flush(MMHEROES_InputRecorder_InputRecorderSink *recorder);
+
+bool mmheroes_input_recorder_record(MMHEROES_InputRecorder_InputRecorderSink *recorder,
+                                    MMHEROES_Input input);
+
 /**
  * Инициализирует итератор по запросам на рендеринг.
  * `game_ui` должен быть валидный ненулевой указатель.
@@ -206,6 +226,16 @@ void mmheroes_renderer_request_iterator_begin(MMHEROES_RendererRequestIterator *
  */
 bool mmheroes_renderer_request_iterator_next(MMHEROES_RendererRequestIterator *iterator,
                                              MMHEROES_RendererRequest *out);
+
+/**
+ * Воспроизводит игру с помощью входных данных, записанных ранее с помощью
+ * `InputRecorder`.
+ *
+ * В случае ошибки возвращает `false`, иначе — `true`.
+ */
+bool mmheroes_replay(MMHEROES_GameUI *game_ui,
+                     const uint8_t *recorded_input,
+                     uintptr_t recorded_input_len);
 
 #ifdef __cplusplus
 } // extern "C"

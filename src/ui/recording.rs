@@ -1,5 +1,5 @@
-use core::fmt::{Write, Result as FmtResult};
 use crate::ui::Input;
+use core::fmt::{Result as FmtResult, Write};
 
 pub struct InputRecorder<'output, Output: Write> {
     output: &'output mut Output,
@@ -7,11 +7,10 @@ pub struct InputRecorder<'output, Output: Write> {
 }
 
 impl<'output, Output: Write> InputRecorder<'output, Output> {
-
     pub fn new(output: &'output mut Output) -> Self {
         InputRecorder {
             output,
-            last_input: None
+            last_input: None,
         }
     }
 
@@ -19,7 +18,7 @@ impl<'output, Output: Write> InputRecorder<'output, Output> {
         if let Some((last_input, count)) = self.last_input {
             if input == last_input {
                 self.last_input = Some((input, count + 1));
-                return Ok(())
+                return Ok(());
             }
 
             self.flush()?;
@@ -54,9 +53,15 @@ impl<'output, Output: Write> InputRecorder<'output, Output> {
 
 #[derive(Debug)]
 pub enum InputRecordingParserError {
-    ParseInt { grapheme: usize, error: core::num::ParseIntError },
-    UnknownCharacter { grapheme: usize },
+    ParseInt {
+        grapheme: usize,
+        error: core::num::ParseIntError,
+    },
+    UnknownCharacter {
+        grapheme: usize,
+    },
     UnexpectedEOF,
+    Interrupted,
 }
 
 pub struct InputRecordingParser<'input> {
@@ -68,7 +73,11 @@ impl<'input> InputRecordingParser<'input> {
         InputRecordingParser { input }
     }
 
-    fn demangle_input(&self, grapheme: usize, c: char) -> Result<Input, InputRecordingParserError> {
+    fn demangle_input(
+        &self,
+        grapheme: usize,
+        c: char,
+    ) -> Result<Input, InputRecordingParserError> {
         match c {
             '↑' => Ok(Input::KeyUp),
             '↓' => Ok(Input::KeyDown),
@@ -78,7 +87,10 @@ impl<'input> InputRecordingParser<'input> {
         }
     }
 
-    pub fn parse_all<F: FnMut(Input)>(&mut self, mut into: F) -> Result<(), InputRecordingParserError> {
+    pub fn parse_all<F: FnMut(Input) -> bool>(
+        &mut self,
+        mut into: F,
+    ) -> Result<(), InputRecordingParserError> {
         let mut number_start = None;
         let mut grapheme = 0usize;
         for (i, c) in self.input.char_indices() {
@@ -87,26 +99,35 @@ impl<'input> InputRecordingParser<'input> {
                     if c.is_ascii_digit() {
                         number_start = Some(i);
                     } else {
-                        into(self.demangle_input(grapheme, c)?);
+                        let input = self.demangle_input(grapheme, c)?;
+                        if !into(input) {
+                            return Err(InputRecordingParserError::Interrupted)
+                        }
                     }
-                },
+                }
                 Some(start_position) => {
                     if !c.is_ascii_digit() {
                         // Встрелили первый символ, не являющийся цифрой.
                         // Парсим число.
-                        let parsed_number = match self.input[start_position..i].parse::<usize>() {
-                            Ok(number) => number,
-                            Err(error) => {
-                                return Err(InputRecordingParserError::ParseInt { grapheme, error })
-                            },
-                        };
+                        let parsed_number =
+                            match self.input[start_position..i].parse::<usize>() {
+                                Ok(number) => number,
+                                Err(error) => {
+                                    return Err(InputRecordingParserError::ParseInt {
+                                        grapheme,
+                                        error,
+                                    })
+                                }
+                            };
                         number_start = None;
                         let input = self.demangle_input(grapheme, c)?;
                         for _ in 0..parsed_number {
-                            into(input)
+                            if !into(input) {
+                                return Err(InputRecordingParserError::Interrupted)
+                            }
                         }
                     }
-                },
+                }
             }
             grapheme += 1;
         }
@@ -168,36 +189,42 @@ mod tests {
         let mut parser = InputRecordingParser::new(&input);
         let mut parsed_input = Vec::new();
 
-        parser.parse_all(|input| parsed_input.push(input))?;
+        parser.parse_all(|input| {
+            parsed_input.push(input);
+            true
+        })?;
 
-        assert_eq!(parsed_input, [
-            Input::KeyDown,
-            Input::Enter,
-            Input::KeyUp,
-            Input::Other,
-            Input::KeyDown,
-            Input::KeyDown,
-            Input::Enter,
-            Input::Enter,
-            Input::Enter,
-            Input::Enter,
-            Input::Enter,
-            Input::Other,
-            Input::Other,
-            Input::KeyUp,
-            Input::KeyUp,
-            Input::KeyUp,
-            Input::KeyUp,
-            Input::KeyUp,
-            Input::KeyUp,
-            Input::KeyUp,
-            Input::KeyUp,
-            Input::KeyUp,
-            Input::KeyUp,
-            Input::KeyUp,
-            Input::KeyUp,
-            Input::KeyDown,
-        ]);
+        assert_eq!(
+            parsed_input,
+            [
+                Input::KeyDown,
+                Input::Enter,
+                Input::KeyUp,
+                Input::Other,
+                Input::KeyDown,
+                Input::KeyDown,
+                Input::Enter,
+                Input::Enter,
+                Input::Enter,
+                Input::Enter,
+                Input::Enter,
+                Input::Other,
+                Input::Other,
+                Input::KeyUp,
+                Input::KeyUp,
+                Input::KeyUp,
+                Input::KeyUp,
+                Input::KeyUp,
+                Input::KeyUp,
+                Input::KeyUp,
+                Input::KeyUp,
+                Input::KeyUp,
+                Input::KeyUp,
+                Input::KeyUp,
+                Input::KeyUp,
+                Input::KeyDown,
+            ]
+        );
 
         Ok(())
     }
@@ -208,11 +235,20 @@ mod tests {
         let mut parser = InputRecordingParser::new(&input);
         let mut parsed_input = Vec::new();
 
-        let result = parser.parse_all(|input| parsed_input.push(input));
+        let result = parser.parse_all(|input| {
+            parsed_input.push(input);
+            true
+        });
 
-        assert_eq!(parsed_input, [Input::KeyDown, Input::KeyDown, Input::Enter, Input::Enter]);
+        assert_eq!(
+            parsed_input,
+            [Input::KeyDown, Input::KeyDown, Input::Enter, Input::Enter]
+        );
 
-        assert!(matches!(result, Err(InputRecordingParserError::UnexpectedEOF)));
+        assert!(matches!(
+            result,
+            Err(InputRecordingParserError::UnexpectedEOF)
+        ));
     }
 
     #[test]
@@ -221,10 +257,16 @@ mod tests {
         let mut parser = InputRecordingParser::new(&input);
         let mut parsed_input = Vec::new();
 
-        let result = parser.parse_all(|input| parsed_input.push(input));
+        let result = parser.parse_all(|input| {
+            parsed_input.push(input);
+            true
+        });
 
-        assert_eq!(parsed_input, [Input::KeyDown,Input::Enter, Input::Enter]);
+        assert_eq!(parsed_input, [Input::KeyDown, Input::Enter, Input::Enter]);
 
-        assert!(matches!(result, Err(InputRecordingParserError::UnknownCharacter { grapheme: 4 })));
+        assert!(matches!(
+            result,
+            Err(InputRecordingParserError::UnknownCharacter { grapheme: 4 })
+        ));
     }
 }

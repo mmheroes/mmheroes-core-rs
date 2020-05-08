@@ -1,5 +1,9 @@
+use crate::ui::recording::InputRecorder;
 use crate::ui::Milliseconds;
 use crate::ui::*;
+
+use crate::logic::{Game, GameMode, Time};
+
 use core::ffi::c_void;
 use core::mem::{align_of, size_of};
 
@@ -14,8 +18,6 @@ pub type Allocator = unsafe fn(AllocatorContext, usize, usize) -> *mut c_void;
 /// в качестве второго — указатель на освобождаемый блок памяти,
 /// а в качестве третьего — размер освобождаемого блока.
 pub type Deallocator = unsafe fn(AllocatorContext, *mut c_void, usize);
-
-use crate::logic::{Game, GameMode, Time};
 
 // Unwinding through FFI boundaries is undefined behavior, so we stop any
 // unwinding and abort.
@@ -38,10 +40,10 @@ fn ffi_safely_run<R, F: FnOnce() -> R>(f: F) -> R {
 }
 
 macro_rules! ffi_constructor {
-    ($name:ident, ($($arg_name:ident: $args:ty),*) -> $retty:ty) => {
+    ($name:tt, $(<$($lifetime:lifetime),*>)? ($($arg_name:ident: $args:ty),*) -> $retty:ty) => {
         #[no_mangle]
-        pub unsafe extern "C" fn $name(
-            $($arg_name: $args),*,
+        pub unsafe extern "C" fn $name $($(<$lifetime>),*)?(
+            $($arg_name: $args,)*
             allocator_context: AllocatorContext,
             allocator: Allocator
         ) -> *mut $retty {
@@ -232,12 +234,74 @@ pub unsafe extern "C" fn mmheroes_renderer_request_iterator_next(
     })
 }
 
+/// Воспроизводит игру с помощью входных данных, записанных ранее с помощью
+/// `InputRecorder`.
+///
+/// В случае ошибки возвращает `false`, иначе — `true`.
+#[no_mangle]
+pub unsafe extern "C" fn mmheroes_replay(
+    game_ui: &mut GameUI,
+    recorded_input: *const u8,
+    recorded_input_len: usize
+) -> bool {
+    ffi_safely_run(|| {
+        assert!(!recorded_input.is_null());
+        let slice = core::slice::from_raw_parts(recorded_input, recorded_input_len);
+        let s = match core::str::from_utf8(slice) {
+            Ok(s) => s,
+            Err(_) => return false,
+        };
+        let mut parser = recording::InputRecordingParser::new(s);
+        parser.parse_all(|input| game_ui.continue_game(input)).is_ok()
+    })
+}
+
 /// Продолжает игру до следующего запроса на нажатие клавиши.
 ///
 /// При первом вызове этой функции неважно, что передаётся в параметре `input`.
 #[no_mangle]
 pub extern "C" fn mmheroes_continue(game_ui: &mut GameUI, input: Input) -> bool {
     ffi_safely_run(|| game_ui.continue_game(input))
+}
+
+#[repr(C)]
+pub struct InputRecorderSink {
+    context: *mut c_void,
+    sink: fn(*mut c_void, *const u8, usize) -> bool,
+}
+
+impl core::fmt::Write for InputRecorderSink {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        if (self.sink)(self.context, s.as_ptr(), s.len()) {
+            Ok(())
+        } else {
+            Err(core::fmt::Error)
+        }
+    }
+}
+
+ffi_constructor!(
+    mmheroes_input_recorder_create,
+    <'a> (sink: &'a mut InputRecorderSink) -> InputRecorder<'a, InputRecorderSink>);
+
+ffi_destructor!(
+    mmheroes_input_recorder_destroy,
+    (recorder: InputRecorder<InputRecorderSink>)
+);
+
+#[no_mangle]
+pub unsafe extern "C" fn mmheroes_input_recorder_record(
+    recorder: &mut InputRecorder<InputRecorderSink>,
+    input: Input,
+) -> bool {
+    ffi_safely_run(|| recorder.record_input(input).is_ok())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn mmheroes_input_recorder_flush(
+    recorder: &mut InputRecorder<InputRecorderSink>,
+) -> bool {
+    ffi_safely_run(|| recorder.flush().is_ok())
 }
 
 #[cfg(feature = "std")]
