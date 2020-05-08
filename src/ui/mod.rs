@@ -20,6 +20,8 @@ pub mod renderer;
 pub use renderer::RendererRequest;
 use renderer::*;
 
+pub mod recording;
+
 use crate::logic::*;
 
 use core::fmt::Display;
