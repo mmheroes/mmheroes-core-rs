@@ -13,35 +13,29 @@ pub use subjects::*;
 use crate::random;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Action {
-    _0,
-    _1,
-    _2,
-    _3,
-    _4,
-    _5,
-    _6,
-    _7,
-    _8,
+pub struct Action(pub u8);
+
+pub const ACTION_0: Action = Action(0);
+pub const ACTION_1: Action = Action(1);
+pub const ACTION_2: Action = Action(2);
+pub const ACTION_3: Action = Action(3);
+pub const ACTION_4: Action = Action(4);
+pub const ACTION_5: Action = Action(5);
+pub const ACTION_6: Action = Action(6);
+pub const ACTION_7: Action = Action(7);
+pub const ACTION_8: Action = Action(8);
+
+impl core::ops::Add<u8> for Action {
+    type Output = Action;
+
+    fn add(self, rhs: u8) -> Self::Output {
+        Action(self.0 + rhs)
+    }
 }
 
-impl core::convert::TryFrom<u8> for Action {
-    type Error = ();
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        use Action::*;
-        match value {
-            0 => Ok(_0),
-            1 => Ok(_1),
-            2 => Ok(_2),
-            3 => Ok(_3),
-            4 => Ok(_4),
-            5 => Ok(_5),
-            6 => Ok(_6),
-            7 => Ok(_7),
-            8 => Ok(_8),
-            _ => Err(()),
-        }
+impl core::ops::AddAssign<u8> for Action {
+    fn add_assign(&mut self, rhs: u8) {
+        self.0 += rhs
     }
 }
 
@@ -258,7 +252,7 @@ impl Game {
 
     pub fn perform_action(&mut self, action: Action) {
         assert!(
-            (action as usize) < self.available_actions,
+            (action.0 as usize) < self.available_actions,
             "Unexpected action"
         );
         self.available_actions = self._perform_action(action)
@@ -330,7 +324,7 @@ impl Game {
                 5
             }
             GameMode::Normal => {
-                self.ding(Action::_0 /* Случайный студент */)
+                self.ding(ACTION_0 /* Случайный студент */)
             }
         }
     }
@@ -344,35 +338,35 @@ impl Game {
     fn initialize_player(&mut self, parameters: Action) -> Player {
         let (god_mode, brain, stamina, charisma) = match parameters {
             // "Случайный студент"
-            Action::_0 => (
+            ACTION_0 => (
                 false,
                 BrainLevel(self.rng.random_number_in_range(4..7)),
                 StaminaLevel(self.rng.random_number_in_range(4..7)),
                 CharismaLevel(self.rng.random_number_in_range(4..7)),
             ),
             // "Шибко умный"
-            Action::_1 => (
+            ACTION_1 => (
                 false,
                 BrainLevel(self.rng.random_number_in_range(5..10)),
                 StaminaLevel(self.rng.random_number_in_range(2..5)),
                 CharismaLevel(self.rng.random_number_in_range(2..5)),
             ),
             // "Шибко наглый"
-            Action::_2 => (
+            ACTION_2 => (
                 false,
                 BrainLevel(self.rng.random_number_in_range(2..5)),
                 StaminaLevel(self.rng.random_number_in_range(5..10)),
                 CharismaLevel(self.rng.random_number_in_range(2..5)),
             ),
             // "Шибко общительный"
-            Action::_3 => (
+            ACTION_3 => (
                 false,
                 BrainLevel(self.rng.random_number_in_range(2..5)),
                 StaminaLevel(self.rng.random_number_in_range(2..5)),
                 CharismaLevel(self.rng.random_number_in_range(5..10)),
             ),
             // "GOD-режим"
-            Action::_4 => (true, BrainLevel(30), StaminaLevel(30), CharismaLevel(30)),
+            ACTION_4 => (true, BrainLevel(30), StaminaLevel(30), CharismaLevel(30)),
             _ => invalid_action!(0, 4),
         };
 
@@ -413,7 +407,7 @@ impl Game {
         assert!(state.location == Location::Dorm);
         match action {
             // Готовиться
-            Action::_0 => {
+            ACTION_0 => {
                 if state.failed_attempt_to_sleep {
                     state.failed_attempt_to_sleep = false;
                     self.scene_router(state)
@@ -422,13 +416,13 @@ impl Game {
                 }
             }
             // Посмотреть расписание
-            Action::_1 => self.view_timetable(state),
+            ACTION_1 => self.view_timetable(state),
             // Отдыхать
-            Action::_2 => self.rest_in_dorm(state),
+            ACTION_2 => self.rest_in_dorm(state),
             // Лечь спать
-            Action::_3 => self.try_to_sleep(state),
+            ACTION_3 => self.try_to_sleep(state),
             // Пойти на факультет
-            Action::_4 => {
+            ACTION_4 => {
                 state.location = Location::PUNK;
                 self.decrease_health(
                     3,
@@ -438,9 +432,9 @@ impl Game {
                 )
             }
             // Поехать в ПОМИ
-            Action::_5 => todo!("Go to PDMI"),
+            ACTION_5 => todo!("Go to PDMI"),
             // Пойти в мавзолей
-            Action::_6 => {
+            ACTION_6 => {
                 state.location = Location::Mausoleum;
                 self.decrease_health(
                     3,
@@ -450,16 +444,18 @@ impl Game {
                 )
             }
             // С меня хватит!
-            Action::_7 => self.i_am_done(state),
+            ACTION_7 => self.i_am_done(state),
             // ЧТО ДЕЛАТЬ ???
-            Action::_8 => {
+            ACTION_8 => {
                 self.screen = WhatToDo(state);
                 HELP_SCREEN_OPTION_COUNT
             }
+            _ => invalid_action!(0, 8)
         }
     }
 
     fn handle_mausoleum_action(&mut self, mut state: GameState, action: Action) -> usize {
+        assert!(state.location == Location::Mausoleum);
         todo!()
     }
 
@@ -536,8 +532,8 @@ impl Game {
 
     fn handle_i_am_done(&mut self, state: GameState, action: Action) -> usize {
         match action {
-            Action::_0 => self.scene_router(state),
-            Action::_1 => self.game_end(state),
+            ACTION_0 => self.scene_router(state),
+            ACTION_1 => self.game_end(state),
             _ => invalid_action!(0, 1),
         }
     }
@@ -556,8 +552,8 @@ impl Game {
 
     fn handle_wanna_try_again(&mut self, action: Action) -> usize {
         match action {
-            Action::_0 => self.start_game(),
-            Action::_1 => {
+            ACTION_0 => self.start_game(),
+            ACTION_1 => {
                 self.screen = Disclaimer;
                 // "Нажми любую клавишу ..."
                 1
@@ -569,31 +565,31 @@ impl Game {
     fn handle_what_to_do(&mut self, state: GameState, action: Action) -> usize {
         assert_eq!(state.location(), Location::Dorm);
         match action {
-            Action::_0 => {
+            ACTION_0 => {
                 // "А что вообще делать?"
                 self.screen = WhatToDo(state)
             }
-            Action::_1 => {
+            ACTION_1 => {
                 // "Об экране"
                 self.screen = AboutScreen(state)
             }
-            Action::_2 => {
+            ACTION_2 => {
                 // "Куда и зачем ходить?"
                 self.screen = WhereToGoAndWhy(state)
             }
-            Action::_3 => {
+            ACTION_3 => {
                 // "О преподавателях"
                 self.screen = AboutProfessors(state)
             }
-            Action::_4 => {
+            ACTION_4 => {
                 // "О персонажах"
                 self.screen = AboutCharacters(state)
             }
-            Action::_5 => {
+            ACTION_5 => {
                 // "Об этой программе"
                 self.screen = AboutThisProgram(state)
             }
-            Action::_6 => {
+            ACTION_6 => {
                 // "Спасибо, ничего"
                 // Возвращаемся на главный экран
                 return self.scene_router(state);

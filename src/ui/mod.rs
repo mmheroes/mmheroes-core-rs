@@ -118,15 +118,13 @@ impl GameUI<'_> {
     pub fn continue_game(&mut self, input: Input) -> bool {
         use GameScreen::*;
 
-        use core::convert::TryFrom;
-
         self.renderer.clear();
 
         if let Some(ref waiting_state) = self.renderer.waiting_state {
             let waiting_state = waiting_state.clone();
 
             let action = match waiting_state {
-                WaitingState::PressAnyKey => Action::_0,
+                WaitingState::PressAnyKey => ACTION_0,
                 WaitingState::Dialog {
                     current_choice,
                     start,
@@ -166,8 +164,7 @@ impl GameUI<'_> {
                             });
                             return true;
                         }
-                        Input::Enter => Action::try_from(current_choice)
-                            .expect("Unexpected action number"),
+                        Input::Enter => Action(current_choice),
                         Input::Other => return true, // Do nothing
                     }
                 }
