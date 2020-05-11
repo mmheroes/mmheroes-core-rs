@@ -274,6 +274,6 @@ pub(in crate::ui::screens) fn display_short_today_timetable(
         };
         r.set_color(problems_color, Color::Black);
 
-        write!(r, "{}/{}", problems_done, problems_required);
+        write!(r, "{:>2}/{}", problems_done, problems_required);
     }
 }
