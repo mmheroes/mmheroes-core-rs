@@ -411,14 +411,12 @@ impl Game {
     fn handle_dorm_action(&mut self, mut state: GameState, action: Action) -> usize {
         assert!(state.location == Location::Dorm);
         match action {
-            Action::Study => {
-                if state.failed_attempt_to_sleep {
-                    state.failed_attempt_to_sleep = false;
-                    self.scene_router(state)
-                } else {
-                    todo!("Study")
-                }
+            Action::AnyKey => {
+                assert!(state.failed_attempt_to_sleep);
+                state.failed_attempt_to_sleep = false;
+                self.scene_router(state)
             }
+            Action::Study => todo!("Study"),
             Action::ViewTimetable => self.view_timetable(state),
             Action::Rest => self.rest_in_dorm(state),
             Action::GoToBed => self.try_to_sleep(state),
