@@ -117,6 +117,11 @@ impl Money {
     pub const fn oat_tincture_cost() -> Money {
         Money(15)
     }
+
+    /// Размер стипендии
+    pub const fn stipend() -> Money {
+        Money(50)
+    }
 }
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]

@@ -250,3 +250,12 @@ pub enum KolyaInteraction {
     /// (заказал Коле настойку овса, но решать задачи он не стал)
     Altruism,
 }
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PashaInteraction {
+    /// "Паша вручает тебе твою стипуху за май: 50 руб."
+    Stipend,
+
+    /// "Паша воодушевляет тебя на великие дела."
+    Inspiration,
+}

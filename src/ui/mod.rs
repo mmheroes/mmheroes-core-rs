@@ -196,6 +196,13 @@ impl GameUI<'_> {
                     *interaction,
                 )
             }
+            PashaInteraction(state, interaction) => {
+                screens::npc::display_pasha_interaction(
+                    &mut self.renderer,
+                    state,
+                    *interaction,
+                )
+            }
             IAmDone(_) => screens::game_end::display_i_am_done(&mut self.renderer),
             GameEnd(state) => {
                 screens::game_end::display_game_end(&mut self.renderer, state)

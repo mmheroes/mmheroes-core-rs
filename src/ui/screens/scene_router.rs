@@ -8,7 +8,7 @@ pub(in crate::ui) fn display_scene_router(
     state: &GameState,
 ) -> WaitingState {
     display_header_stats(r, state);
-    display_short_today_timetable(r, state.current_day(), state.player());
+    display_short_today_timetable(r, 9, state.current_day(), state.player());
     r.set_color(Color::White, Color::Black);
     r.move_cursor_to(7, 0);
     let mut options = tiny_vec![capacity: 16];
@@ -246,11 +246,11 @@ fn color_for_assessment(assessment: KnowledgeAssessment) -> Color {
 fn display_knowledge(r: &mut Renderer, player: &Player) {
     for (i, (subject, _)) in SUBJECTS.iter().enumerate() {
         let line = i as Line;
-        r.move_cursor_to(line, 45);
+        r.move_cursor_to(line, 44);
         write_colored!(CyanBright, r, "{}", subject_name(*subject));
 
         let knowledge = player.status_for_subject(*subject).knowledge();
-        r.move_cursor_to(line, 67);
+        r.move_cursor_to(line, 66);
         r.set_color(
             color_for_assessment(knowledge.absolute_knowledge_assessment()),
             Color::Black,
@@ -258,7 +258,7 @@ fn display_knowledge(r: &mut Renderer, player: &Player) {
         write!(r, "{}", knowledge);
 
         let relative_assessment = knowledge.relative_knowledge_assessment(*subject);
-        r.move_cursor_to(line, 71);
+        r.move_cursor_to(line, 70);
         r.set_color(color_for_assessment(relative_assessment), Color::Black);
         let assessment_description = match relative_assessment {
             KnowledgeAssessment::Bad => "Плохо",
@@ -273,30 +273,31 @@ fn display_knowledge(r: &mut Renderer, player: &Player) {
 
 pub(in crate::ui::screens) fn display_short_today_timetable(
     r: &mut Renderer,
+    start_line: Line,
     today: &Day,
     player: &Player,
 ) {
     for (i, (subject, subject_info)) in SUBJECTS.iter().enumerate() {
-        let line = (i as Line) + 9;
-        r.move_cursor_to(line, 50);
+        let line = (i as Line) + start_line;
+        r.move_cursor_to(line, 49);
         let passed = player.status_for_subject(*subject).passed();
         let set_color_if_passed = |r: &mut Renderer, if_passed, if_not_passed| {
             r.set_color(if passed { if_passed } else { if_not_passed }, Color::Black)
         };
         set_color_if_passed(r, Color::Blue, Color::CyanBright);
         write!(r, "{}", subject_short_name(*subject));
-        r.move_cursor_to(line, 58);
+        r.move_cursor_to(line, 57);
         set_color_if_passed(r, Color::Magenta, Color::RedBright);
         if let Some(exam) = today.exam(*subject) {
             write!(r, "{}", exam.location());
             set_color_if_passed(r, Color::Gray, Color::WhiteBright);
-            r.move_cursor_to(line, 64);
+            r.move_cursor_to(line, 63);
             write!(r, "{}-{}", exam.from(), exam.to());
         } else {
             write!(r, "----");
         }
 
-        r.move_cursor_to(line, 72);
+        r.move_cursor_to(line, 71);
         let problems_done = player.status_for_subject(*subject).problems_done();
         let problems_required = subject_info.required_problems();
         let problems_color = if problems_done == 0 {

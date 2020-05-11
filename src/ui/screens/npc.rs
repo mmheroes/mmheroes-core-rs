@@ -1,4 +1,5 @@
-use crate::logic::{npc::KolyaInteraction, *};
+use crate::logic::npc::{KolyaInteraction, PashaInteraction};
+use crate::logic::*;
 use crate::ui::{renderer::Renderer, screens::scene_router, *};
 
 pub(in crate::ui) fn display_kolya_interaction(
@@ -11,6 +12,7 @@ pub(in crate::ui) fn display_kolya_interaction(
     let today_timetable = |r: &mut Renderer| {
         scene_router::display_short_today_timetable(
             r,
+            11,
             state.current_day(),
             state.player(),
         )
@@ -50,9 +52,9 @@ pub(in crate::ui) fn display_kolya_interaction(
     match interaction {
         KolyaInteraction::SolvedAlgebraProblemsForFree => solved_algebra_problems(r),
         KolyaInteraction::PromptOatTincture => {
-            today_timetable(r);
             oat_tincture_is_better(r);
             writeln_colored!(White, r, "Заказать Коле настойку овса?");
+            today_timetable(r);
             let options = tiny_vec!(capacity: 16, [
                 ("Да", Color::CyanBright, Action::Yes),
                 ("Нет", Color::CyanBright, Action::No),
@@ -89,4 +91,25 @@ pub(in crate::ui) fn display_kolya_interaction(
             wait_for_any_key(r)
         }
     }
+}
+
+pub(in crate::ui) fn display_pasha_interaction(
+    r: &mut Renderer,
+    state: &GameState,
+    interaction: npc::PashaInteraction,
+) -> WaitingState {
+    scene_router::display_header_stats(r, state);
+    r.move_cursor_to(7, 0);
+    match interaction {
+        PashaInteraction::Stipend => {
+            write_colored!(White, r, "Паша вручает тебе твою стипуху за май: ");
+            write_colored!(WhiteBright, r, "{}", Money::stipend());
+            write_colored!(White, r, " руб.");
+        }
+        PashaInteraction::Inspiration => {
+            writeln_colored!(Green, r, "Паша воодушевляет тебя на великие дела.");
+            writeln_colored!(RedBright, r, "Вместе с этим он немного достает тебя.");
+        }
+    }
+    wait_for_any_key(r)
 }

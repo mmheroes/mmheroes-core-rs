@@ -152,6 +152,9 @@ pub enum GameScreen {
     /// Взаимодействие с Колей.
     KolyaInteraction(GameState, npc::KolyaInteraction),
 
+    /// Взаимодействие с Пашей.
+    PashaInteraction(GameState, npc::PashaInteraction),
+
     /// Экран "ты серьёзно хочешь закончить игру?"
     IAmDone(GameState),
 
@@ -254,7 +257,8 @@ impl Game {
             | AboutProfessors(state)
             | AboutCharacters(state)
             | AboutThisProgram(state)
-            | KolyaInteraction(state, _) => Some(state),
+            | KolyaInteraction(state, _)
+            | PashaInteraction(state, _) => Some(state),
             Intro | InitialParameters | Ding(_) | WannaTryAgain | Disclaimer
             | Terminal => None,
         }
@@ -294,6 +298,11 @@ impl Game {
                 let state = state.clone();
                 let interaction = *interaction;
                 self.proceed_with_kolya(state, action, interaction)
+            }
+            PashaInteraction(state, interaction) => {
+                let state = state.clone();
+                let interaction = *interaction;
+                self.proceed_with_pasha(state, action, interaction)
             }
             IAmDone(state) => {
                 let state = state.clone();
@@ -486,8 +495,49 @@ impl Game {
         }
     }
 
+    fn interact_with_pasha(&mut self, state: GameState) -> usize {
+        assert_eq!(state.location, Location::PUNK);
+        let interaction = if state.player.got_stipend {
+            npc::PashaInteraction::Inspiration
+        } else {
+            npc::PashaInteraction::Stipend
+        };
+
+        self.screen = GameScreen::PashaInteraction(state, interaction);
+        // "Нажми любую клавишу ..."
+        1
+    }
+
+    fn proceed_with_pasha(
+        &mut self,
+        mut state: GameState,
+        action: Action,
+        interaction: npc::PashaInteraction,
+    ) -> usize {
+        assert_eq!(action, Action::AnyKey);
+        assert_eq!(state.location, Location::PUNK);
+        assert!(matches!(self.screen, GameScreen::PashaInteraction(_, _)));
+        match interaction {
+            npc::PashaInteraction::Stipend => {
+                state.player.got_stipend = true;
+                state.player.money += Money::stipend();
+            }
+            npc::PashaInteraction::Inspiration => {
+                state.player.stamina += 1;
+                for (subject, _) in SUBJECTS.iter() {
+                    let knowledge =
+                        &mut state.player.status_for_subject_mut(*subject).knowledge;
+                    if *knowledge > BrainLevel(3) {
+                        *knowledge -= self.rng.random_number_with_upper_bound(3);
+                    }
+                }
+            }
+        }
+        self.scene_router(state)
+    }
+
     fn handle_punk_action(&mut self, mut state: GameState, action: Action) -> usize {
-        assert!(state.location == Location::PUNK);
+        assert_eq!(state.location, Location::PUNK);
         match action {
             Action::GoToProfessor => todo!(),
             Action::LookAtBestScores => todo!(),
@@ -524,11 +574,18 @@ impl Game {
                     state.classmates[Pasha].current_location(),
                     ClassmateLocation::Location(Location::PUNK)
                 ));
-                todo!()
+                self.interact_with_pasha(state)
             }
             Action::InteractWithClassmate(Misha) => {
                 assert!(matches!(
                     state.classmates[Misha].current_location(),
+                    ClassmateLocation::Location(Location::PUNK)
+                ));
+                todo!()
+            }
+            Action::InteractWithClassmate(Serj) => {
+                assert!(matches!(
+                    state.classmates[Serj].current_location(),
                     ClassmateLocation::Location(Location::PUNK)
                 ));
                 todo!()
@@ -557,11 +614,11 @@ impl Game {
         use Subject::AlgebraAndNumberTheory;
         let has_enough_charisma =
             player.charisma > self.rng.random_number_with_upper_bound(CharismaLevel(10));
-        let subject_status = player.status_for_subject_mut(AlgebraAndNumberTheory);
-        let has_at_least_2_remaining_problems = subject_status.problems_done + 2
-            <= SUBJECTS[AlgebraAndNumberTheory].1.required_problems;
+        let algebra = player.status_for_subject(AlgebraAndNumberTheory);
+        let problems_done = algebra.problems_done;
+        let required_problems = SUBJECTS[AlgebraAndNumberTheory].1.required_problems;
+        let has_at_least_2_remaining_problems = problems_done + 2 <= required_problems;
         if has_enough_charisma && has_at_least_2_remaining_problems {
-            subject_status.problems_done += 2;
             // "Нажми любую клавишу ..."
             Some(1)
         } else {
@@ -570,39 +627,26 @@ impl Game {
     }
 
     fn interact_with_kolya(&mut self, mut state: GameState) -> usize {
+        assert_eq!(state.location, Location::Mausoleum);
         let player = &mut state.player;
-        if let Some(num_actions) = self.kolya_maybe_solve_algebra_problems(player) {
-            self.screen = GameScreen::KolyaInteraction(
-                state.clone(),
-                npc::KolyaInteraction::SolvedAlgebraProblemsForFree,
-            );
-            return num_actions;
-        }
-
-        if player.money < Money::oat_tincture_cost() {
-            // "Коля достает тормозную жидкость, и вы распиваете еще по стакану."
-            player.brain -= 1;
-            if player.brain <= BrainLevel(0) {
-                player.health = HealthLevel(0);
-                player.cause_of_death = Some(CauseOfDeath::DrankTooMuch);
-                return self.game_end(state);
-            }
-            self.screen = GameScreen::KolyaInteraction(
-                state,
-                npc::KolyaInteraction::BrakeFluidNoMoney,
-            );
-            // "Нажми любую клавишу ..."
-            1
-        } else {
-            // "Знаешь, пиво, конечно, хорошо, но настойка овса - лучше!"
-            // "Заказать Коле настойку овса?"
-            self.screen = GameScreen::KolyaInteraction(
-                state,
-                npc::KolyaInteraction::PromptOatTincture,
-            );
-            // "Да" или "Нет"
-            2
-        }
+        let (num_actions, interaction) =
+            if let Some(num_actions) = self.kolya_maybe_solve_algebra_problems(player) {
+                (
+                    num_actions,
+                    npc::KolyaInteraction::SolvedAlgebraProblemsForFree,
+                )
+            } else if player.money < Money::oat_tincture_cost() {
+                // "Коля достает тормозную жидкость, и вы распиваете еще по стакану."
+                // "Нажми любую клавишу ..."
+                (1, npc::KolyaInteraction::BrakeFluidNoMoney)
+            } else {
+                // "Знаешь, пиво, конечно, хорошо, но настойка овса - лучше!"
+                // "Заказать Коле настойку овса?"
+                // "Да" или "Нет"
+                (2, npc::KolyaInteraction::PromptOatTincture)
+            };
+        self.screen = GameScreen::KolyaInteraction(state, interaction);
+        num_actions
     }
 
     fn proceed_with_kolya(
@@ -611,15 +655,44 @@ impl Game {
         action: Action,
         interaction: npc::KolyaInteraction,
     ) -> usize {
+        assert_eq!(state.location, Location::Mausoleum);
+        assert!(matches!(self.screen, GameScreen::KolyaInteraction(_, _)));
+        let player = &mut state.player;
         match action {
             Action::AnyKey => {
-                assert_ne!(interaction, npc::KolyaInteraction::PromptOatTincture);
+                let algebra_status =
+                    player.status_for_subject_mut(Subject::AlgebraAndNumberTheory);
+                match interaction {
+                    npc::KolyaInteraction::SolvedAlgebraProblemsForFree => {
+                        algebra_status.problems_done += 2;
+                    }
+                    npc::KolyaInteraction::PromptOatTincture => unreachable!(),
+                    npc::KolyaInteraction::SolvedAlgebraProblemsForOatTincture => {
+                        algebra_status.problems_done += 2;
+                        player.money -= Money::oat_tincture_cost();
+                    }
+                    npc::KolyaInteraction::BrakeFluidNoMoney => {
+                        player.brain -= 1;
+                        if player.brain <= BrainLevel(0) {
+                            player.health = HealthLevel(0);
+                            player.cause_of_death = Some(CauseOfDeath::DrankTooMuch);
+                            return self.game_end(state);
+                        }
+                    }
+                    npc::KolyaInteraction::BrakeFluidBecauseRefused => {
+                        state.player.brain -= 1;
+                        // Забавно, что в этой ветке можно бесконечно пить тормозную
+                        // жидкость и никогда не спиться. Баг в оригинальной реализации.
+                    }
+                    npc::KolyaInteraction::Altruism => {
+                        player.money -= Money::oat_tincture_cost();
+                    }
+                }
                 self.scene_router(state)
             }
             Action::Yes => {
-                state.player.money -= Money::oat_tincture_cost();
-                if let Some(num_actions) =
-                    self.kolya_maybe_solve_algebra_problems(&mut state.player)
+                assert_eq!(interaction, npc::KolyaInteraction::PromptOatTincture);
+                if let Some(num_actions) = self.kolya_maybe_solve_algebra_problems(player)
                 {
                     // "Коля решил тебе ещё 2 задачи по алгебре!"
                     self.screen = GameScreen::KolyaInteraction(
@@ -638,11 +711,9 @@ impl Game {
                 }
             }
             Action::No => {
+                assert_eq!(interaction, npc::KolyaInteraction::PromptOatTincture);
                 // "Зря, ой, зря ..."
                 // "Коля достает тормозную жидкость, и вы распиваете еще по стакану."
-                state.player.brain -= 1;
-                // Забавно, что в этой ветке можно бесконечно пить тормозную жидкость
-                // и никогда не спиться. Наверное, баг в оригинальной реализации.
                 self.screen = GameScreen::KolyaInteraction(
                     state,
                     npc::KolyaInteraction::BrakeFluidBecauseRefused,
