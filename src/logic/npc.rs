@@ -1,4 +1,4 @@
-use crate::logic::{timetable::Timetable, Day, Location, Subject, Time};
+use crate::logic::{Day, Location, Subject, Time};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Classmate {
@@ -42,9 +42,10 @@ impl ClassmateInfo {
 
     pub(in crate::logic) fn update(
         &mut self,
-        _day: &Day,
+        rng: &mut crate::random::Rng,
+        current_location: Location,
+        today: &Day,
         time: Time,
-        _timetable: &Timetable,
     ) {
         match self.classmate {
             Kolya => {
@@ -54,7 +55,38 @@ impl ClassmateInfo {
                     ClassmateLocation::Nowhere
                 }
             }
-            Pasha => { /* TODO */ }
+            Pasha => {
+                self.current_location = if time.is_between_9_and_19() {
+                    ClassmateLocation::Location(Location::PUNK)
+                } else {
+                    ClassmateLocation::Nowhere
+                };
+
+                let subjects = [
+                    Subject::AlgebraAndNumberTheory,
+                    Subject::Calculus,
+                    Subject::GeometryAndTopology
+                ];
+
+                let mut at_least_one_exam_is_today = false;
+                let mut pasha_is_present_at_some_exam = false;
+
+                loop {
+                    for subject in subjects.iter().cloned() {
+                        if current_location.is_exam_here_on_day(subject, today) {
+                            at_least_one_exam_is_today = true;
+                            if rng.random_number_with_upper_bound(10) > 5 {
+                                pasha_is_present_at_some_exam = true;
+                                self.current_location = ClassmateLocation::Exam(subject)
+                            }
+                        }
+                    }
+
+                    if pasha_is_present_at_some_exam || !at_least_one_exam_is_today {
+                        break
+                    }
+                }
+            }
             Diamond => { /* TODO */ }
             RAI => { /* TODO */ }
             Misha => { /* TODO */ }

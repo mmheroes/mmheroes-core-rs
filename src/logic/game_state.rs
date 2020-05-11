@@ -253,3 +253,9 @@ pub enum Location {
     Dorm = 4,
     Mausoleum = 5,
 }
+
+impl Location {
+    pub fn is_exam_here_on_day(self, subject: Subject, today: &Day) -> bool {
+        today.exam(subject).map_or(false, |exam| exam.location() == self)
+    }
+}

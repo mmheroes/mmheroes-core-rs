@@ -624,7 +624,7 @@ impl Game {
         let time = state.current_time;
         let classmates = &mut state.classmates;
         for classmate in classmates.iter_mut() {
-            classmate.update(day, time, timetable);
+            classmate.update(&mut self.rng, state.location, day, time);
         }
     }
 
