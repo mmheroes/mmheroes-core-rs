@@ -184,9 +184,11 @@ impl GameUI<'_> {
             GameScreen::Timetable(state) => {
                 screens::timetable::display_timetable(&mut self.renderer, state)
             }
-            SceneRouter(state) => {
-                screens::scene_router::display_scene_router(&mut self.renderer, state)
-            }
+            SceneRouter(state) => screens::scene_router::display_scene_router(
+                &mut self.renderer,
+                self.game.available_actions(),
+                state,
+            ),
             KolyaInteraction(state, interaction) => {
                 screens::npc::display_kolya_interaction(
                     &mut self.renderer,

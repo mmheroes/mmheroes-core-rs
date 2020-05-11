@@ -98,6 +98,14 @@ impl HealthLevel {
         ];
         *crate::util::assess(&scale, self, &Great)
     }
+
+    pub(in crate::logic) const fn location_change_large_penalty() -> HealthLevel {
+        HealthLevel(3)
+    }
+
+    pub(in crate::logic) const fn location_change_small_penalty() -> HealthLevel {
+        HealthLevel(2)
+    }
 }
 
 impl Money {

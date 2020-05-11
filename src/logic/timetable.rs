@@ -24,6 +24,14 @@ impl Time {
     pub fn is_between_9_and_19(self) -> bool {
         self.0 >= 9 && self.0 <= 19
     }
+
+    pub fn is_computer_class_open(self) -> bool {
+        self.0 < 20
+    }
+
+    pub fn is_cafe_open(self) -> bool {
+        self.0 >= 10 && self.0 <= 18
+    }
 }
 
 impl Display for Time {

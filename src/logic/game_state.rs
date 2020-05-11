@@ -103,7 +103,7 @@ pub struct Player {
     pub(in crate::logic) has_internet: bool,
     pub(in crate::logic) is_invited: bool,
     pub(in crate::logic) inception: bool,
-    pub(in crate::logic) employed_at_terkom: bool,
+    pub(in crate::logic) is_employed_at_terkom: bool,
     pub(in crate::logic) got_stipend: bool,
     pub(in crate::logic) has_ticket: bool,
     pub(in crate::logic) knows_djug: bool,
@@ -171,7 +171,7 @@ impl Player {
             has_internet: false,
             is_invited: false,
             inception: false,
-            employed_at_terkom: false,
+            is_employed_at_terkom: false,
             got_stipend: false,
             has_ticket: false,
             knows_djug: false,
@@ -216,6 +216,10 @@ impl Player {
         self.has_internet
     }
 
+    pub fn is_employed_at_terkom(&self) -> bool {
+        self.is_employed_at_terkom
+    }
+
     pub fn health(&self) -> HealthLevel {
         self.health
     }
@@ -256,6 +260,8 @@ pub enum Location {
 
 impl Location {
     pub fn is_exam_here_on_day(self, subject: Subject, today: &Day) -> bool {
-        today.exam(subject).map_or(false, |exam| exam.location() == self)
+        today
+            .exam(subject)
+            .map_or(false, |exam| exam.location() == self)
     }
 }

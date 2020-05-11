@@ -4,6 +4,7 @@ use crate::ui::*;
 
 pub(in crate::ui) fn display_scene_router(
     r: &mut Renderer,
+    available_actions: usize,
     state: &GameState,
 ) -> WaitingState {
     display_header_stats(r, state);
@@ -12,9 +13,49 @@ pub(in crate::ui) fn display_scene_router(
     r.move_cursor_to(7, 0);
     let mut options = tiny_vec![capacity: 16];
 
+    let push_classmates = |options: &mut tiny_vec_ty![DialogOption; 16]| {
+        for classmate_info in state.classmates().filter_by_location(state.location()) {
+            options.push((
+                classmate_name(classmate_info.classmate()),
+                Color::YellowBright,
+                Action::InteractWithClassmate(classmate_info.classmate()),
+            ));
+        }
+    };
+
     let i_am_done = ("С меня хватит!", Color::BlueBright, Action::IAmDone);
     match state.location() {
-        Location::PUNK => todo!(),
+        Location::PUNK => {
+            writeln!(r, "Ты на факультете. Что делать?");
+            options.push(("Идти к преподу", Color::CyanBright, Action::GoToProfessor));
+            options.push((
+                "Посмотреть на баобаб",
+                Color::CyanBright,
+                Action::LookAtBestScores,
+            ));
+            options.push(("Пойти в общагу", Color::CyanBright, Action::GoToDorm));
+            options.push(("Поехать в ПОМИ", Color::CyanBright, Action::GoToPDMI));
+            options.push(("Пойти в мавзолей", Color::CyanBright, Action::GoToMausoleum));
+            if state.current_time().is_computer_class_open() {
+                options.push((
+                    "Пойти в компьютерный класс",
+                    Color::CyanBright,
+                    Action::GoToComputerClass,
+                ));
+            }
+            if state.current_time().is_cafe_open() {
+                options.push(("Сходить в кафе", Color::CyanBright, Action::GoToCafe));
+            }
+            push_classmates(&mut options);
+            if state.player().is_employed_at_terkom() {
+                options.push((
+                    "Пойти в ТЕРКОМ, поработать",
+                    Color::CyanBright,
+                    Action::GoToWork,
+                ));
+            }
+            options.push(i_am_done);
+        }
         Location::PDMI => todo!(),
         Location::ComputerClass => {
             writeln!(r, "Ты в компьютерном классе. Что делать?");
@@ -62,18 +103,11 @@ pub(in crate::ui) fn display_scene_router(
             options.push(("Поехать в ПОМИ", Color::CyanBright, Action::GoToPDMI));
             options.push(("Идти в общагу", Color::CyanBright, Action::GoToDorm));
             options.push(("Отдыхать", Color::CyanBright, Action::Rest));
-            for classmate_info in
-                state.classmates().filter_by_location(Location::Mausoleum)
-            {
-                options.push((
-                    classmate_name(classmate_info.classmate()),
-                    Color::YellowBright,
-                    Action::InteractWithClassmate(classmate_info.classmate()),
-                ));
-            }
+            push_classmates(&mut options);
             options.push(i_am_done);
         }
     }
+    assert_eq!(available_actions, options.len());
     r.move_cursor_to(9, 0);
     if state.failed_attempt_to_sleep() {
         assert!(state.location() == Location::Dorm);

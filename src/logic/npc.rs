@@ -65,7 +65,7 @@ impl ClassmateInfo {
                 let subjects = [
                     Subject::AlgebraAndNumberTheory,
                     Subject::Calculus,
-                    Subject::GeometryAndTopology
+                    Subject::GeometryAndTopology,
                 ];
 
                 let mut at_least_one_exam_is_today = false;
@@ -83,7 +83,7 @@ impl ClassmateInfo {
                     }
 
                     if pasha_is_present_at_some_exam || !at_least_one_exam_is_today {
-                        break
+                        break;
                     }
                 }
             }

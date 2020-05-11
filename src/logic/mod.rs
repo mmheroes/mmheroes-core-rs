@@ -35,10 +35,15 @@ pub enum Action {
     GoToBed,
     GoToDorm,
     GoToPUNK,
+    GoToComputerClass,
     GoToPDMI,
     GoToMausoleum,
+    GoToCafe,
     SurfInternet,
     PlayMMHEROES,
+    GoToProfessor,
+    GoToWork,
+    LookAtBestScores,
     IAmDone,
     WhatToDo,
     AboutScreen,
@@ -387,20 +392,53 @@ impl Game {
         // TODO: assert that no exam is in progress
         let location = state.location;
         self.screen = GameScreen::SceneRouter(state);
+        let state = self.game_state().unwrap();
         match location {
             Location::PDMI => todo!(),
-            Location::PUNK => todo!(),
-            Location::Mausoleum => {
-                4 // TODO: This number should be based on what NPCs are available
+            Location::PUNK => {
+                // - Идти к преподу
+                // - Посмотреть на баобаб
+                // - Пойти в общагу
+                // - Поехать в ПОМИ
+                // - Пойти в мавзолей
+                // - (Пойти в компьютерный класс)?
+                // - (Сходить в кафе)?
+                // - (NPC)*
+                // - (Пойти в ТЕРКОМ, поработать)?
+                // - С меня хватит!
+                6 + (state.current_time.is_computer_class_open() as usize)
+                    + (state.current_time.is_cafe_open() as usize)
+                    + state.classmates.filter_by_location(location).count()
+                    + (state.player.is_employed_at_terkom() as usize)
             }
-            Location::Dorm => 9,
+            Location::Mausoleum => {
+                // - Идти в ПУНК
+                // - Поехать в ПОМИ
+                // - Идти в общагу
+                // - Отдыхать
+                // - (NPC)*
+                // - С меня хватит!
+                5 + state.classmates.filter_by_location(location).count()
+            }
+            Location::Dorm => {
+                // - Готовиться
+                // - Посмотреть расписание
+                // - Отдыхать
+                // - Лечь спать
+                // - Пойти на факультет
+                // - Поехать в ПОМИ
+                // - Пойти в мавзолей
+                // - С меня хватит!
+                // - ЧТО ДЕЛАТЬ ???
+                9
+            }
             Location::ComputerClass => todo!(),
         }
     }
 
     fn handle_scene_router_action(&mut self, state: GameState, action: Action) -> usize {
         match state.location() {
-            Location::PUNK => todo!(),
+            Location::PUNK => self.handle_punk_action(state, action),
             Location::PDMI => todo!(),
             Location::ComputerClass => todo!(),
             Location::Dorm => self.handle_dorm_action(state, action),
@@ -423,7 +461,7 @@ impl Game {
             Action::GoToPUNK => {
                 state.location = Location::PUNK;
                 self.decrease_health(
-                    3,
+                    HealthLevel::location_change_large_penalty(),
                     state,
                     CauseOfDeath::OnTheWayToPUNK,
                     /*if_alive=*/ |game, state| game.scene_router(state),
@@ -433,7 +471,7 @@ impl Game {
             Action::GoToMausoleum => {
                 state.location = Location::Mausoleum;
                 self.decrease_health(
-                    3,
+                    HealthLevel::location_change_large_penalty(),
                     state,
                     CauseOfDeath::OnTheWayToMausoleum,
                     /*if_alive=*/ |game, state| game.scene_router(state),
@@ -444,6 +482,69 @@ impl Game {
                 self.screen = WhatToDo(state);
                 HELP_SCREEN_OPTION_COUNT
             }
+            _ => illegal_action!(action),
+        }
+    }
+
+    fn handle_punk_action(&mut self, mut state: GameState, action: Action) -> usize {
+        assert!(state.location == Location::PUNK);
+        match action {
+            Action::GoToProfessor => todo!(),
+            Action::LookAtBestScores => todo!(),
+            Action::GoToDorm => {
+                state.location = Location::Dorm;
+                self.scene_router(state)
+            }
+            Action::GoToPDMI => todo!(),
+            Action::GoToMausoleum => {
+                state.location = Location::Mausoleum;
+                self.decrease_health(
+                    HealthLevel::location_change_large_penalty(),
+                    state,
+                    CauseOfDeath::OnTheWayToMausoleum,
+                    /*if_alive=*/ |game, state| game.scene_router(state),
+                )
+            }
+            Action::GoToComputerClass => {
+                assert!(state.current_time.is_computer_class_open());
+                state.location = Location::ComputerClass;
+                self.decrease_health(
+                    HealthLevel::location_change_small_penalty(),
+                    state,
+                    CauseOfDeath::FellFromStairs,
+                    /*if_alive=*/ |game, state| game.scene_router(state),
+                )
+            }
+            Action::GoToCafe => {
+                assert!(state.current_time.is_cafe_open());
+                todo!()
+            }
+            Action::InteractWithClassmate(Pasha) => {
+                assert!(matches!(
+                    state.classmates[Pasha].current_location(),
+                    ClassmateLocation::Location(Location::PUNK)
+                ));
+                todo!()
+            }
+            Action::InteractWithClassmate(Misha) => {
+                assert!(matches!(
+                    state.classmates[Misha].current_location(),
+                    ClassmateLocation::Location(Location::PUNK)
+                ));
+                todo!()
+            }
+            Action::InteractWithClassmate(Sasha) => {
+                assert!(matches!(
+                    state.classmates[Sasha].current_location(),
+                    ClassmateLocation::Location(Location::PUNK)
+                ));
+                todo!()
+            }
+            Action::GoToWork => {
+                assert!(state.player.is_employed_at_terkom);
+                todo!()
+            }
+            Action::IAmDone => self.i_am_done(state),
             _ => illegal_action!(action),
         }
     }
@@ -556,16 +657,42 @@ impl Game {
     fn handle_mausoleum_action(&mut self, mut state: GameState, action: Action) -> usize {
         assert!(state.location == Location::Mausoleum);
         match action {
-            Action::GoToPUNK => todo!(),
+            Action::GoToPUNK => {
+                state.location = Location::PUNK;
+                self.decrease_health(
+                    HealthLevel::location_change_large_penalty(),
+                    state,
+                    CauseOfDeath::OnTheWayToPUNK,
+                    /*if_alive=*/ |game, state| game.scene_router(state),
+                )
+            }
             Action::GoToPDMI => todo!(),
             Action::GoToDorm => {
                 state.location = Location::Dorm;
                 self.scene_router(state)
             }
             Action::Rest => todo!(),
-            Action::InteractWithClassmate(Kolya) => self.interact_with_kolya(state),
-            Action::InteractWithClassmate(Grisha) => todo!(),
-            Action::InteractWithClassmate(Serj) => todo!(),
+            Action::InteractWithClassmate(Kolya) => {
+                assert!(matches!(
+                    state.classmates[Kolya].current_location(),
+                    ClassmateLocation::Location(Location::Mausoleum)
+                ));
+                self.interact_with_kolya(state)
+            }
+            Action::InteractWithClassmate(Grisha) => {
+                assert!(matches!(
+                    state.classmates[Grisha].current_location(),
+                    ClassmateLocation::Location(Location::Mausoleum)
+                ));
+                todo!()
+            }
+            Action::InteractWithClassmate(Serj) => {
+                assert!(matches!(
+                    state.classmates[Serj].current_location(),
+                    ClassmateLocation::Location(Location::Mausoleum)
+                ));
+                todo!()
+            }
             _ => illegal_action!(action),
         }
     }
@@ -578,16 +705,16 @@ impl Game {
 
     fn decrease_health<F: FnOnce(&mut Game, GameState) -> usize>(
         &mut self,
-        delta: u8,
+        delta: HealthLevel,
         mut state: GameState,
         cause_of_death: CauseOfDeath,
         if_alive: F,
     ) -> usize {
-        if state.player.health <= HealthLevel(delta as i16) {
+        if state.player.health <= delta {
             state.player.cause_of_death = Some(cause_of_death);
             self.game_end(state)
         } else {
-            state.player.health -= delta as i16;
+            state.player.health -= delta;
             if_alive(self, state)
         }
     }
