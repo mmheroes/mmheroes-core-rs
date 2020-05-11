@@ -101,7 +101,7 @@ impl<'input> InputRecordingParser<'input> {
                     } else {
                         let input = self.demangle_input(grapheme, c)?;
                         if !into(input) {
-                            return Err(InputRecordingParserError::Interrupted)
+                            return Err(InputRecordingParserError::Interrupted);
                         }
                     }
                 }
@@ -123,7 +123,7 @@ impl<'input> InputRecordingParser<'input> {
                         let input = self.demangle_input(grapheme, c)?;
                         for _ in 0..parsed_number {
                             if !into(input) {
-                                return Err(InputRecordingParserError::Interrupted)
+                                return Err(InputRecordingParserError::Interrupted);
                             }
                         }
                     }

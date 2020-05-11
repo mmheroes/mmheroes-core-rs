@@ -162,6 +162,15 @@ extern "C" {
 bool mmheroes_continue(MMHEROES_GameUI *game_ui,
                        MMHEROES_Input input);
 
+/**
+ * Выделяет память для объекта, используя переданный аллокатор,
+ * а затем инициализирует объект и возвращает на него указатель.
+ *
+ * Аллокатор должен возвращать корректно выровненный указатель на блок памяти
+ * достаточного размера. Нарушение любого из этих условий — неопределённое поведение.
+ *
+ * Размер и выравнивание передаются в качестве аргументов аллокатору.
+ */
 MMHEROES_Game *mmheroes_game_create(MMHEROES_GameMode mode,
                                     uint64_t seed,
                                     MMHEROES_AllocatorContext allocator_context,
@@ -189,6 +198,15 @@ bool mmheroes_game_get_current_time(MMHEROES_Game *game,
                                     uint8_t *out_day,
                                     MMHEROES_Time *out_time);
 
+/**
+ * Выделяет память для объекта, используя переданный аллокатор,
+ * а затем инициализирует объект и возвращает на него указатель.
+ *
+ * Аллокатор должен возвращать корректно выровненный указатель на блок памяти
+ * достаточного размера. Нарушение любого из этих условий — неопределённое поведение.
+ *
+ * Размер и выравнивание передаются в качестве аргументов аллокатору.
+ */
 MMHEROES_GameUI *mmheroes_game_ui_create(MMHEROES_Game *game,
                                          MMHEROES_AllocatorContext allocator_context,
                                          MMHEROES_Allocator allocator);
@@ -197,6 +215,15 @@ void mmheroes_game_ui_destroy(MMHEROES_GameUI *game_ui,
                               MMHEROES_AllocatorContext deallocator_context,
                               MMHEROES_Deallocator deallocator);
 
+/**
+ * Выделяет память для объекта, используя переданный аллокатор,
+ * а затем инициализирует объект и возвращает на него указатель.
+ *
+ * Аллокатор должен возвращать корректно выровненный указатель на блок памяти
+ * достаточного размера. Нарушение любого из этих условий — неопределённое поведение.
+ *
+ * Размер и выравнивание передаются в качестве аргументов аллокатору.
+ */
 MMHEROES_InputRecorder_InputRecorderSink *mmheroes_input_recorder_create(MMHEROES_InputRecorderSink *sink,
                                                                          MMHEROES_AllocatorContext allocator_context,
                                                                          MMHEROES_Allocator allocator);

@@ -41,6 +41,13 @@ fn ffi_safely_run<R, F: FnOnce() -> R>(f: F) -> R {
 
 macro_rules! ffi_constructor {
     ($name:tt, $(<$($lifetime:lifetime),*>)? ($($arg_name:ident: $args:ty),*) -> $retty:ty) => {
+        /// Выделяет память для объекта, используя переданный аллокатор,
+        /// а затем инициализирует объект и возвращает на него указатель.
+        ///
+        /// Аллокатор должен возвращать корректно выровненный указатель на блок памяти
+        /// достаточного размера. Нарушение любого из этих условий — неопределённое поведение.
+        ///
+        /// Размер и выравнивание передаются в качестве аргументов аллокатору.
         #[no_mangle]
         pub unsafe extern "C" fn $name $($(<$lifetime>),*)?(
             $($arg_name: $args,)*
@@ -84,14 +91,6 @@ macro_rules! ffi_destructor {
     };
 }
 
-/// Выделяет память для экземпляра игры, используя переданный аллокатор,
-/// а затем инициализирует игры и возвращает на её указатель.
-///
-/// Аллокатор должен возвращать корректно выровненный указатель на блок памяти
-/// достаточного размера. Нарушение любого из этих условий — неопределённое поведение.
-///
-/// Размер и выравнивание передаются в качестве аргументов аллокатору.
-#[allow(unused_doc_comments)]
 ffi_constructor!(mmheroes_game_create, (mode: GameMode, seed: u64) -> Game);
 ffi_destructor!(mmheroes_game_destroy, (game: Game));
 
@@ -125,16 +124,6 @@ pub extern "C" fn mmheroes_game_get_current_time(
     })
 }
 
-/// Выделяет память для экземпляра игры, используя переданный аллокатор,
-/// а затем инициализирует игры и возвращает на её указатель.
-///
-/// Аллокатор должен возвращать корректно выровненный указатель на блок памяти
-/// достаточного размера. Нарушение любого из этих условий — неопределённое поведение.
-///
-/// Размер и выравнивание передаются в качестве аргументов аллокатору.
-///
-/// Аргумент `game` не должен быть нулевым указателем, иначе UB.
-#[allow(unused_doc_comments)]
 ffi_constructor!(mmheroes_game_ui_create, (game: &mut Game) -> GameUI);
 ffi_destructor!(mmheroes_game_ui_destroy, (game_ui: GameUI));
 
@@ -242,7 +231,7 @@ pub unsafe extern "C" fn mmheroes_renderer_request_iterator_next(
 pub unsafe extern "C" fn mmheroes_replay(
     game_ui: &mut GameUI,
     recorded_input: *const u8,
-    recorded_input_len: usize
+    recorded_input_len: usize,
 ) -> bool {
     ffi_safely_run(|| {
         assert!(!recorded_input.is_null());
@@ -252,7 +241,9 @@ pub unsafe extern "C" fn mmheroes_replay(
             Err(_) => return false,
         };
         let mut parser = recording::InputRecordingParser::new(s);
-        parser.parse_all(|input| game_ui.continue_game(input)).is_ok()
+        parser
+            .parse_all(|input| game_ui.continue_game(input))
+            .is_ok()
     })
 }
 
