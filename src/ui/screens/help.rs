@@ -1,4 +1,4 @@
-use crate::ui::*;
+use crate::ui::{renderer::Renderer, *};
 
 pub(in crate::ui) fn display_what_to_do(r: &mut Renderer) -> WaitingState {
     write_colored!(White, r, "Есть всего ");
@@ -306,13 +306,13 @@ fn help_dialog(r: &mut Renderer) -> WaitingState {
     writeln_colored!(White, r, "Что тебя интересует");
 
     let options = tiny_vec!(capacity: 16, [
-        (" А что вообще делать ", Color::CyanBright),
-        (" Об экране            ", Color::CyanBright),
-        (" Куда и зачем ходить ", Color::CyanBright),
-        (" О преподавателях     ", Color::CyanBright),
-        (" О персонажах         ", Color::CyanBright),
-        (" Об этой программе    ", Color::CyanBright),
-        (" Спасибо, ничего      ", Color::CyanBright),
+        (" А что вообще делать? ", Color::CyanBright, Action::WhatToDo),
+        (" Об экране            ", Color::CyanBright, Action::AboutScreen),
+        (" Куда и зачем ходить? ", Color::CyanBright, Action::WhereToGoAndWhy),
+        (" О преподавателях     ", Color::CyanBright, Action::AboutProfessors),
+        (" О персонажах         ", Color::CyanBright, Action::AboutCharacters),
+        (" Об этой программе    ", Color::CyanBright, Action::AboutThisProgram),
+        (" Спасибо, ничего      ", Color::CyanBright, Action::GoBack),
     ]);
 
     dialog(r, options)

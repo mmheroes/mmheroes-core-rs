@@ -10,49 +10,48 @@ pub use game_state::*;
 pub mod subjects;
 pub use subjects::*;
 
+pub mod npc;
+pub use npc::*;
+
+use npc::Classmate::*;
+
 use crate::random;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Action {
-    _0,
-    _1,
-    _2,
-    _3,
-    _4,
-    _5,
-    _6,
-    _7,
-    _8,
+    AnyKey,
+    Yes,
+    No,
+    InteractWithClassmate(Classmate),
+    InteractWithProfessor(Subject),
+    RandomStudent,
+    CleverStudent,
+    ImpudentStudent,
+    SociableStudent,
+    GodMode,
+    Study,
+    ViewTimetable,
+    Rest,
+    GoToBed,
+    GoToDorm,
+    GoToPUNK,
+    GoToPDMI,
+    GoToMausoleum,
+    SurfInternet,
+    PlayMMHEROES,
+    IAmDone,
+    WhatToDo,
+    AboutScreen,
+    WhereToGoAndWhy,
+    AboutProfessors,
+    AboutCharacters,
+    AboutThisProgram,
+    GoBack,
 }
 
-impl core::convert::TryFrom<u8> for Action {
-    type Error = ();
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        use Action::*;
-        match value {
-            0 => Ok(_0),
-            1 => Ok(_1),
-            2 => Ok(_2),
-            3 => Ok(_3),
-            4 => Ok(_4),
-            5 => Ok(_5),
-            6 => Ok(_6),
-            7 => Ok(_7),
-            8 => Ok(_8),
-            _ => Err(()),
-        }
-    }
-}
-
-macro_rules! invalid_action {
-    ($from:literal, $to:literal) => {
-        panic!(concat!(
-            "invalid action, expected from ",
-            $from,
-            " to ",
-            $to
-        ))
+macro_rules! illegal_action {
+    ($action:expr) => {
+        panic!("Illegal action: {:?}", $action)
     };
 }
 
@@ -64,13 +63,13 @@ pub enum CauseOfDeath {
     /// Умер по пути в мавзолей.
     OnTheWayToMausoleum,
 
-    /// Умер по пути домой.
+    /// Умер по пути домой. Бывает.
     OnTheWayToDorm,
 
     /// Упал с лестницы у главного входа.
     FellFromStairs,
 
-    /// Сгорел на работе
+    /// Сгорел на работе.
     Burnout,
 
     /// Заучился.
@@ -144,6 +143,9 @@ pub enum GameScreen {
 
     /// Главный экран.
     SceneRouter(GameState),
+
+    /// Взаимодействие с Колей.
+    KolyaInteraction(GameState, npc::KolyaInteraction),
 
     /// Экран "ты серьёзно хочешь закончить игру?"
     IAmDone(GameState),
@@ -246,7 +248,8 @@ impl Game {
             | WhereToGoAndWhy(state)
             | AboutProfessors(state)
             | AboutCharacters(state)
-            | AboutThisProgram(state) => Some(state),
+            | AboutThisProgram(state)
+            | KolyaInteraction(state, _) => Some(state),
             Intro | InitialParameters | Ding(_) | WannaTryAgain | Disclaimer
             | Terminal => None,
         }
@@ -257,10 +260,6 @@ impl Game {
     }
 
     pub fn perform_action(&mut self, action: Action) {
-        assert!(
-            (action as usize) < self.available_actions,
-            "Unexpected action"
-        );
         self.available_actions = self._perform_action(action)
     }
 
@@ -285,6 +284,11 @@ impl Game {
             SceneRouter(state) => {
                 let state = state.clone();
                 self.handle_scene_router_action(state, action)
+            }
+            KolyaInteraction(state, interaction) => {
+                let state = state.clone();
+                let interaction = *interaction;
+                self.proceed_with_kolya(state, action, interaction)
             }
             IAmDone(state) => {
                 let state = state.clone();
@@ -329,9 +333,7 @@ impl Game {
                 // - GOD-режим
                 5
             }
-            GameMode::Normal => {
-                self.ding(Action::_0 /* Случайный студент */)
-            }
+            GameMode::Normal => self.ding(Action::RandomStudent),
         }
     }
 
@@ -343,37 +345,34 @@ impl Game {
 
     fn initialize_player(&mut self, parameters: Action) -> Player {
         let (god_mode, brain, stamina, charisma) = match parameters {
-            // "Случайный студент"
-            Action::_0 => (
+            Action::RandomStudent => (
                 false,
                 BrainLevel(self.rng.random_number_in_range(4..7)),
                 StaminaLevel(self.rng.random_number_in_range(4..7)),
                 CharismaLevel(self.rng.random_number_in_range(4..7)),
             ),
-            // "Шибко умный"
-            Action::_1 => (
+            Action::CleverStudent => (
                 false,
                 BrainLevel(self.rng.random_number_in_range(5..10)),
                 StaminaLevel(self.rng.random_number_in_range(2..5)),
                 CharismaLevel(self.rng.random_number_in_range(2..5)),
             ),
-            // "Шибко наглый"
-            Action::_2 => (
+            Action::ImpudentStudent => (
                 false,
                 BrainLevel(self.rng.random_number_in_range(2..5)),
                 StaminaLevel(self.rng.random_number_in_range(5..10)),
                 CharismaLevel(self.rng.random_number_in_range(2..5)),
             ),
-            // "Шибко общительный"
-            Action::_3 => (
+            Action::SociableStudent => (
                 false,
                 BrainLevel(self.rng.random_number_in_range(2..5)),
                 StaminaLevel(self.rng.random_number_in_range(2..5)),
                 CharismaLevel(self.rng.random_number_in_range(5..10)),
             ),
-            // "GOD-режим"
-            Action::_4 => (true, BrainLevel(30), StaminaLevel(30), CharismaLevel(30)),
-            _ => invalid_action!(0, 4),
+            Action::GodMode => {
+                (true, BrainLevel(30), StaminaLevel(30), CharismaLevel(30))
+            }
+            _ => illegal_action!(parameters),
         };
 
         let health =
@@ -412,8 +411,7 @@ impl Game {
     fn handle_dorm_action(&mut self, mut state: GameState, action: Action) -> usize {
         assert!(state.location == Location::Dorm);
         match action {
-            // Готовиться
-            Action::_0 => {
+            Action::Study => {
                 if state.failed_attempt_to_sleep {
                     state.failed_attempt_to_sleep = false;
                     self.scene_router(state)
@@ -421,14 +419,10 @@ impl Game {
                     todo!("Study")
                 }
             }
-            // Посмотреть расписание
-            Action::_1 => self.view_timetable(state),
-            // Отдыхать
-            Action::_2 => self.rest_in_dorm(state),
-            // Лечь спать
-            Action::_3 => self.try_to_sleep(state),
-            // Пойти на факультет
-            Action::_4 => {
+            Action::ViewTimetable => self.view_timetable(state),
+            Action::Rest => self.rest_in_dorm(state),
+            Action::GoToBed => self.try_to_sleep(state),
+            Action::GoToPUNK => {
                 state.location = Location::PUNK;
                 self.decrease_health(
                     3,
@@ -437,10 +431,8 @@ impl Game {
                     /*if_alive=*/ |game, state| game.scene_router(state),
                 )
             }
-            // Поехать в ПОМИ
-            Action::_5 => todo!("Go to PDMI"),
-            // Пойти в мавзолей
-            Action::_6 => {
+            Action::GoToPDMI => todo!("Go to PDMI"),
+            Action::GoToMausoleum => {
                 state.location = Location::Mausoleum;
                 self.decrease_health(
                     3,
@@ -449,18 +441,133 @@ impl Game {
                     /*if_alive=*/ |game, state| game.scene_router(state),
                 )
             }
-            // С меня хватит!
-            Action::_7 => self.i_am_done(state),
-            // ЧТО ДЕЛАТЬ ???
-            Action::_8 => {
+            Action::IAmDone => self.i_am_done(state),
+            Action::WhatToDo => {
                 self.screen = WhatToDo(state);
                 HELP_SCREEN_OPTION_COUNT
             }
+            _ => illegal_action!(action),
+        }
+    }
+
+    /// Возвращает `Some`, если Коля помог решить задачи по алгебре, иначе — `None`.
+    fn kolya_maybe_solve_algebra_problems(
+        &mut self,
+        player: &mut Player,
+    ) -> Option<usize> {
+        use Subject::AlgebraAndNumberTheory;
+        let has_enough_charisma =
+            player.charisma > self.rng.random_number_with_upper_bound(CharismaLevel(10));
+        let subject_status = player.status_for_subject_mut(AlgebraAndNumberTheory);
+        let has_at_least_2_remaining_problems = subject_status.problems_done + 2
+            <= SUBJECTS[AlgebraAndNumberTheory].1.required_problems;
+        if has_enough_charisma && has_at_least_2_remaining_problems {
+            subject_status.problems_done += 2;
+            // "Нажми любую клавишу ..."
+            Some(1)
+        } else {
+            None
+        }
+    }
+
+    fn interact_with_kolya(&mut self, mut state: GameState) -> usize {
+        let player = &mut state.player;
+        if let Some(num_actions) = self.kolya_maybe_solve_algebra_problems(player) {
+            self.screen = GameScreen::KolyaInteraction(
+                state.clone(),
+                npc::KolyaInteraction::SolvedAlgebraProblemsForFree,
+            );
+            return num_actions;
+        }
+
+        if player.money < Money::oat_tincture_cost() {
+            // "Коля достает тормозную жидкость, и вы распиваете еще по стакану."
+            player.brain -= 1;
+            if player.brain <= BrainLevel(0) {
+                player.health = HealthLevel(0);
+                player.cause_of_death = Some(CauseOfDeath::DrankTooMuch);
+                return self.game_end(state);
+            }
+            self.screen = GameScreen::KolyaInteraction(
+                state,
+                npc::KolyaInteraction::BrakeFluidNoMoney,
+            );
+            // "Нажми любую клавишу ..."
+            1
+        } else {
+            // "Знаешь, пиво, конечно, хорошо, но настойка овса - лучше!"
+            // "Заказать Коле настойку овса?"
+            self.screen = GameScreen::KolyaInteraction(
+                state,
+                npc::KolyaInteraction::PromptOatTincture,
+            );
+            // "Да" или "Нет"
+            2
+        }
+    }
+
+    fn proceed_with_kolya(
+        &mut self,
+        mut state: GameState,
+        action: Action,
+        interaction: npc::KolyaInteraction,
+    ) -> usize {
+        match action {
+            Action::AnyKey => {
+                assert_ne!(interaction, npc::KolyaInteraction::PromptOatTincture);
+                self.scene_router(state)
+            }
+            Action::Yes => {
+                state.player.money -= Money::oat_tincture_cost();
+                if let Some(num_actions) =
+                    self.kolya_maybe_solve_algebra_problems(&mut state.player)
+                {
+                    // "Коля решил тебе ещё 2 задачи по алгебре!"
+                    self.screen = GameScreen::KolyaInteraction(
+                        state,
+                        npc::KolyaInteraction::SolvedAlgebraProblemsForOatTincture,
+                    );
+                    num_actions
+                } else {
+                    // "Твой альтруизм навсегда останется в памяти потомков."
+                    self.screen = GameScreen::KolyaInteraction(
+                        state,
+                        npc::KolyaInteraction::Altruism,
+                    );
+                    // "Нажми любую клавишу ..."
+                    1
+                }
+            }
+            Action::No => {
+                // "Зря, ой, зря ..."
+                // "Коля достает тормозную жидкость, и вы распиваете еще по стакану."
+                state.player.brain -= 1;
+                self.screen = GameScreen::KolyaInteraction(
+                    state,
+                    npc::KolyaInteraction::BrakeFluidBecauseRefused,
+                );
+                // "Нажми любую клавишу ..."
+                1
+            }
+            _ => illegal_action!(action),
         }
     }
 
     fn handle_mausoleum_action(&mut self, mut state: GameState, action: Action) -> usize {
-        todo!()
+        assert!(state.location == Location::Mausoleum);
+        match action {
+            Action::GoToPUNK => todo!(),
+            Action::GoToPDMI => todo!(),
+            Action::GoToDorm => {
+                state.location = Location::Dorm;
+                self.scene_router(state)
+            }
+            Action::Rest => todo!(),
+            Action::InteractWithClassmate(Kolya) => self.interact_with_kolya(state),
+            Action::InteractWithClassmate(Grisha) => todo!(),
+            Action::InteractWithClassmate(Serj) => todo!(),
+            _ => illegal_action!(action),
+        }
     }
 
     fn view_timetable(&mut self, state: GameState) -> usize {
@@ -476,11 +583,11 @@ impl Game {
         cause_of_death: CauseOfDeath,
         if_alive: F,
     ) -> usize {
-        if state.player.health <= HealthLevel(delta) {
+        if state.player.health <= HealthLevel(delta as i16) {
             state.player.cause_of_death = Some(cause_of_death);
             self.game_end(state)
         } else {
-            state.player.health -= delta;
+            state.player.health -= delta as i16;
             if_alive(self, state)
         }
     }
@@ -511,8 +618,22 @@ impl Game {
         }
     }
 
+    fn run_classmate_routines(&mut self, state: &mut GameState) {
+        let timetable = &state.timetable;
+        let day = &timetable.days()[state.current_day_index];
+        let time = state.current_time;
+        let classmates = &mut state.classmates;
+        for classmate in classmates.iter_mut() {
+            classmate.update(day, time, timetable);
+        }
+    }
+
     fn hour_pass(&mut self, mut state: GameState) -> usize {
         // TODO: Lot of stuff going on here
+
+        // TODO: Поменять эти строки местами и не забыть отредактировать метод
+        // Time::is_between_9_and_19()!
+        self.run_classmate_routines(&mut state);
         state.current_time += Duration(1);
 
         if state.current_time.is_midnight() {
@@ -536,9 +657,9 @@ impl Game {
 
     fn handle_i_am_done(&mut self, state: GameState, action: Action) -> usize {
         match action {
-            Action::_0 => self.scene_router(state),
-            Action::_1 => self.game_end(state),
-            _ => invalid_action!(0, 1),
+            Action::No => self.scene_router(state),
+            Action::Yes => self.game_end(state),
+            _ => illegal_action!(action),
         }
     }
 
@@ -556,49 +677,29 @@ impl Game {
 
     fn handle_wanna_try_again(&mut self, action: Action) -> usize {
         match action {
-            Action::_0 => self.start_game(),
-            Action::_1 => {
+            Action::Yes => self.start_game(),
+            Action::No => {
                 self.screen = Disclaimer;
                 // "Нажми любую клавишу ..."
                 1
             }
-            _ => invalid_action!(0, 1),
+            _ => illegal_action!(action),
         }
     }
 
     fn handle_what_to_do(&mut self, state: GameState, action: Action) -> usize {
         assert_eq!(state.location(), Location::Dorm);
         match action {
-            Action::_0 => {
-                // "А что вообще делать?"
-                self.screen = WhatToDo(state)
-            }
-            Action::_1 => {
-                // "Об экране"
-                self.screen = AboutScreen(state)
-            }
-            Action::_2 => {
-                // "Куда и зачем ходить?"
-                self.screen = WhereToGoAndWhy(state)
-            }
-            Action::_3 => {
-                // "О преподавателях"
-                self.screen = AboutProfessors(state)
-            }
-            Action::_4 => {
-                // "О персонажах"
-                self.screen = AboutCharacters(state)
-            }
-            Action::_5 => {
-                // "Об этой программе"
-                self.screen = AboutThisProgram(state)
-            }
-            Action::_6 => {
-                // "Спасибо, ничего"
-                // Возвращаемся на главный экран
+            Action::WhatToDo => self.screen = WhatToDo(state),
+            Action::AboutScreen => self.screen = AboutScreen(state),
+            Action::WhereToGoAndWhy => self.screen = WhereToGoAndWhy(state),
+            Action::AboutProfessors => self.screen = AboutProfessors(state),
+            Action::AboutCharacters => self.screen = AboutCharacters(state),
+            Action::AboutThisProgram => self.screen = AboutThisProgram(state),
+            Action::GoBack => {
                 return self.scene_router(state);
             }
-            _ => invalid_action!(0, 6),
+            _ => illegal_action!(action),
         };
         HELP_SCREEN_OPTION_COUNT
     }

@@ -1,5 +1,5 @@
 use crate::logic::*;
-use crate::ui::*;
+use crate::ui::{renderer::Renderer, *};
 
 pub(in crate::ui) fn display_intro(r: &mut Renderer) -> WaitingState {
     r.set_color(Color::Gray, Color::Black);
@@ -63,14 +63,14 @@ pub(in crate::ui) fn display_initial_parameters(
     writeln!(r);
 
     let mut options = tiny_vec!(capacity: 16, [
-        ("Случайный студент", Color::CyanBright),
-        ("Шибко умный", Color::CyanBright),
-        ("Шибко наглый", Color::CyanBright),
-        ("Шибко общительный", Color::CyanBright),
+        ("Случайный студент", Color::CyanBright, Action::RandomStudent),
+        ("Шибко умный", Color::CyanBright, Action::CleverStudent),
+        ("Шибко наглый", Color::CyanBright, Action::ImpudentStudent),
+        ("Шибко общительный", Color::CyanBright, Action::SociableStudent),
     ]);
 
     if mode == GameMode::God {
-        options.push(("GOD-режим", Color::CyanBright))
+        options.push(("GOD-режим", Color::CyanBright, Action::GodMode))
     }
 
     dialog(r, options)

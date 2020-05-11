@@ -20,6 +20,10 @@ impl Time {
     pub fn is_midnight(self) -> bool {
         self.0 == 0 || self.0 == 24
     }
+
+    pub fn is_between_9_and_19(self) -> bool {
+        self.0 >= 9 && self.0 <= 19
+    }
 }
 
 impl Display for Time {

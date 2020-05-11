@@ -8,6 +8,7 @@ pub struct GameState {
     pub(in crate::logic) failed_attempt_to_sleep: bool,
     pub(in crate::logic) timetable: timetable::Timetable,
     pub(in crate::logic) location: Location,
+    pub(in crate::logic) classmates: Classmates,
 }
 
 impl GameState {
@@ -23,6 +24,7 @@ impl GameState {
             failed_attempt_to_sleep: false,
             timetable,
             location,
+            classmates: Classmates::new(),
         }
     }
 
@@ -48,6 +50,10 @@ impl GameState {
 
     pub fn failed_attempt_to_sleep(&self) -> bool {
         self.failed_attempt_to_sleep
+    }
+
+    pub fn classmates(&self) -> &Classmates {
+        &self.classmates
     }
 }
 
@@ -186,6 +192,13 @@ impl Player {
 
     pub fn status_for_subject(&self, subject: Subject) -> &SubjectStatus {
         &self.subjects[subject as usize]
+    }
+
+    pub(in crate::logic) fn status_for_subject_mut(
+        &mut self,
+        subject: Subject,
+    ) -> &mut SubjectStatus {
+        &mut self.subjects[subject as usize]
     }
 
     pub fn exams_left(&self) -> usize {

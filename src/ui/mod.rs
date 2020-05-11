@@ -94,7 +94,7 @@ enum WaitingState {
     Dialog {
         current_choice: u8,
         start: (Line, Column),
-        options: tiny_vec_ty![(&'static str, Color); 16],
+        options: tiny_vec_ty![DialogOption; 16],
     },
 }
 
@@ -118,15 +118,13 @@ impl GameUI<'_> {
     pub fn continue_game(&mut self, input: Input) -> bool {
         use GameScreen::*;
 
-        use core::convert::TryFrom;
-
         self.renderer.clear();
 
         if let Some(ref waiting_state) = self.renderer.waiting_state {
             let waiting_state = waiting_state.clone();
 
             let action = match waiting_state {
-                WaitingState::PressAnyKey => Action::_0,
+                WaitingState::PressAnyKey => Action::AnyKey,
                 WaitingState::Dialog {
                     current_choice,
                     start,
@@ -166,8 +164,7 @@ impl GameUI<'_> {
                             });
                             return true;
                         }
-                        Input::Enter => Action::try_from(current_choice)
-                            .expect("Unexpected action number"),
+                        Input::Enter => options[current_choice as usize].2,
                         Input::Other => return true, // Do nothing
                     }
                 }
@@ -189,6 +186,13 @@ impl GameUI<'_> {
             }
             SceneRouter(state) => {
                 screens::scene_router::display_scene_router(&mut self.renderer, state)
+            }
+            KolyaInteraction(state, interaction) => {
+                screens::npc::display_kolya_interaction(
+                    &mut self.renderer,
+                    state,
+                    *interaction,
+                )
             }
             IAmDone(_) => screens::game_end::display_i_am_done(&mut self.renderer),
             GameEnd(state) => {
@@ -226,7 +230,7 @@ impl GameUI<'_> {
     }
 }
 
-type DialogOption = (&'static str, Color);
+type DialogOption = (&'static str, Color, Action);
 
 fn display_dialog(
     r: &mut Renderer,
@@ -235,7 +239,7 @@ fn display_dialog(
     options: &[DialogOption],
 ) {
     let mut chosen_line_end_position = start;
-    for (i, &(name, color)) in options.iter().enumerate() {
+    for (i, &(name, color, _)) in options.iter().enumerate() {
         r.move_cursor_to(start.0 + i as Line, start.1);
         if i == current_choice as usize {
             r.set_color(Color::Black, Color::White);
@@ -275,9 +279,9 @@ fn wait_for_any_key(r: &mut Renderer) -> WaitingState {
     WaitingState::PressAnyKey
 }
 
-fn inactive_dialog(r: &mut Renderer, options: &[(&str, Color)]) {
+fn inactive_dialog(r: &mut Renderer, options: &[DialogOption]) {
     let start = r.get_cursor_position();
-    for (i, &(name, color)) in options.iter().enumerate() {
+    for (i, &(name, color, _)) in options.iter().enumerate() {
         r.move_cursor_to(start.0 + i as Line, start.1);
         r.set_color(color, Color::Black);
         write!(r, "{}", name);
@@ -350,4 +354,21 @@ impl Display for Location {
 pub fn day_date(day: &Day) -> &'static str {
     const DATES: [&str; NUM_DAYS] = ["22.5", "23.5", "24.5", "25.5", "26.5", "27.5"];
     DATES[day.index()]
+}
+
+pub fn classmate_name(classmate: Classmate) -> &'static str {
+    match classmate {
+        Classmate::Kolya => "Коля",
+        Classmate::Pasha => "Паша",
+        Classmate::Diamond => "Diamond",
+        Classmate::RAI => "RAI",
+        Classmate::Misha => "Миша",
+        Classmate::Serj => "Серж",
+        Classmate::Sasha => "Саша",
+        Classmate::NiL => "NiL",
+        Classmate::Kuzmenko => "Кузьменко В.Г.",
+        Classmate::DJuG => "DJuG",
+        Classmate::Andrew => "Эндрю",
+        Classmate::Grisha => "Гриша",
+    }
 }

@@ -1,5 +1,5 @@
-use crate::logic::GameState;
-use crate::ui::*;
+use crate::logic::{CauseOfDeath, GameState};
+use crate::ui::{renderer::Renderer, *};
 
 pub(in crate::ui) fn display_i_am_done(r: &mut Renderer) -> WaitingState {
     writeln_colored!(White, r, "Ну, может не надо так резко...");
@@ -7,20 +7,58 @@ pub(in crate::ui) fn display_i_am_done(r: &mut Renderer) -> WaitingState {
     writeln!(r);
 
     let options = tiny_vec!(capacity: 16, [
-        ("Нет, не хочу!", Color::CyanBright),
-        ("Я же сказал: с меня хватит!", Color::CyanBright),
+        ("Нет, не хочу!", Color::CyanBright, Action::No),
+        ("Я же сказал: с меня хватит!", Color::CyanBright, Action::Yes),
     ]);
 
     dialog(r, options)
 }
 
-pub(in crate::ui) fn display_game_end(
-    r: &mut Renderer,
-    _state: &GameState,
-) -> WaitingState {
-    // TODO: Display proper text based on the final state
-    // (cause of death/expelling, or congratulation)
+fn display_game_end_dead(r: &mut Renderer, cause: CauseOfDeath) -> WaitingState {
+    use CauseOfDeath::*;
+    r.set_color(Color::RedBright, Color::Black);
+    writeln!(r, "Легче лбом колоть орехи,");
+    writeln!(r, "чем учиться на МАТ-МЕХе.");
+    r.set_color(Color::MagentaBright, Color::Black);
+    match cause {
+        OnTheWayToPUNK => writeln!(r, "Умер по пути на факультет."),
+        OnTheWayToMausoleum => writeln!(r, "Умер по пути в мавзолей."),
+        OnTheWayToDorm => writeln!(r, "Умер по пути домой. Бывает."),
+        FellFromStairs => writeln!(r, "Упал с лестницы у главного входа."),
+        Burnout => writeln!(r, "Сгорел на работе."),
+        Overstudied => writeln!(r, "Заучился."),
+        StudiedTooWell => writeln!(r, "Зубрежка до добра не доводит!"),
+        CouldntLeaveTheComputer => writeln!(r, "Не смог расстаться с компьютером."),
+        CorpseFoundInTheTrain => writeln!(r, "В электричке нашли бездыханное тело."),
+        KilledByInspectors => writeln!(r, "Контролеры жизни лишили."),
+        FellAsleepInTheTrain => writeln!(r, "Заснул в электричке и не проснулся."),
+        SplitPersonality => writeln!(r, "Раздвоение ложной личности."),
+        BeerAlcoholism => writeln!(r, "Пивной алкоголизм, батенька..."),
+        DrankTooMuch => writeln!(r, "Спился."),
+        DrankTooMuchBeer => writeln!(r, "Губит людей не пиво, а избыток пива."),
+        Altruism => writeln!(r, "Альтруизм не довел до добра."),
+        TurnedToVegetable => writeln!(r, "Превратился в овощ."),
+        TorturedByProfessor(subject) => {
+            let verb_ending = match professor_gender(subject) {
+                Gender::Male => "",
+                Gender::Female => "а",
+            };
+            writeln!(r, "{} замучил{}.", professor_name(subject), verb_ending)
+        }
+        Paranoia => writeln!(r, "Бурно прогрессирующая паранойя."),
+        TimeOut => writeln!(r, "Время вышло."),
+        Suicide => writeln!(r, "Вышел сам."),
+        SoftwareBug => {
+            debug_assert!(false);
+            writeln!(r, "Раздавлен безжалостной ошибкой в программе.")
+        }
+    }
+    wait_for_any_key(r)
+}
 
+fn display_game_end_alive(r: &mut Renderer) -> WaitingState {
+    // TODO: Display proper text based on the final state
+    // (cause of expelling, or congratulation)
     writeln_colored!(MagentaBright, r, "Уффффф! Во всяком случае, ты еще живой.");
     writeln!(r);
     write_colored!(RedBright, r, "У тебя нет целых ");
@@ -36,14 +74,25 @@ pub(in crate::ui) fn display_game_end(
     wait_for_any_key(r)
 }
 
+pub(in crate::ui) fn display_game_end(
+    r: &mut Renderer,
+    state: &GameState,
+) -> WaitingState {
+    if let Some(cause_of_death) = state.player().cause_of_death() {
+        display_game_end_dead(r, cause_of_death)
+    } else {
+        display_game_end_alive(r)
+    }
+}
+
 pub(in crate::ui) fn display_wanna_try_again(r: &mut Renderer) -> WaitingState {
     writeln_colored!(White, r, "Хочешь попробовать еще?");
     writeln!(r);
     writeln!(r);
 
     let options = tiny_vec!(capacity: 16, [
-        ("ДА!!! ДА!!! ДА!!!", Color::CyanBright),
-        ("Нет... Нет... Не-э-эт...", Color::CyanBright),
+        ("ДА!!! ДА!!! ДА!!!", Color::CyanBright, Action::Yes),
+        ("Нет... Нет... Не-э-эт...", Color::CyanBright, Action::No),
     ]);
 
     dialog(r, options)

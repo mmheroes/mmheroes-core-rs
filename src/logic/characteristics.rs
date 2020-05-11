@@ -5,16 +5,28 @@ macro_rules! define_characteristic {
     ($name:ident) => {
         #[repr(transparent)]
         #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug)]
-        pub struct $name(pub(in crate::logic) u8);
+        pub struct $name(pub(in crate::logic) i16);
 
-        impl core::ops::AddAssign<u8> for $name {
-            fn add_assign(&mut self, rhs: u8) {
+        impl core::ops::AddAssign for $name {
+            fn add_assign(&mut self, rhs: Self) {
+                self.0 += rhs.0
+            }
+        }
+
+        impl core::ops::AddAssign<i16> for $name {
+            fn add_assign(&mut self, rhs: i16) {
                 self.0 += rhs
             }
         }
 
-        impl core::ops::SubAssign<u8> for $name {
-            fn sub_assign(&mut self, rhs: u8) {
+        impl core::ops::SubAssign for $name {
+            fn sub_assign(&mut self, rhs: Self) {
+                self.0 -= rhs.0
+            }
+        }
+
+        impl core::ops::SubAssign<i16> for $name {
+            fn sub_assign(&mut self, rhs: i16) {
                 self.0 -= rhs
             }
         }
@@ -23,12 +35,12 @@ macro_rules! define_characteristic {
             type Error = core::num::TryFromIntError;
 
             fn try_from(value: u64) -> Result<Self, Self::Error> {
-                u8::try_from(value).map($name)
+                i16::try_from(value).map($name)
             }
         }
 
         impl TryFrom<$name> for u64 {
-            type Error = core::convert::Infallible;
+            type Error = core::num::TryFromIntError;
 
             fn try_from(value: $name) -> Result<Self, Self::Error> {
                 u64::try_from(value.0)
@@ -91,6 +103,11 @@ impl HealthLevel {
 impl Money {
     pub const fn zero() -> Money {
         Money(0)
+    }
+
+    /// Стоимость настойки овса для Коли
+    pub const fn oat_tincture_cost() -> Money {
+        Money(15)
     }
 }
 

@@ -148,6 +148,14 @@ macro_rules! __tiny_vec_implementation {
             }
         }
 
+        impl<Element, Index: core::slice::SliceIndex<[Element]>> core::ops::Index<Index> for tiny_vec_ty![Element; $capacity] {
+            type Output = <Index as core::slice::SliceIndex<[Element]>>::Output;
+
+            fn index(&self, index: Index) -> &Self::Output {
+                core::ops::Index::index(&**self, index)
+            }
+        }
+
         impl<Element: Clone> tiny_vec_ty![Element; $capacity] {
 
             #[allow(dead_code)] // False positive here
@@ -225,6 +233,9 @@ macro_rules! __tiny_vec_push_elements {
 macro_rules! tiny_vec {
     (capacity: $capacity:literal) => (
         <tiny_vec_ty![_; $capacity]>::new()
+    );
+    (capacity: $capacity:literal, []) => (
+        tiny_vec!(capacity: $capacity)
     );
     (capacity: $capacity:literal, [$($elements:expr),*]) => {{
         let mut v = tiny_vec!(capacity: $capacity);

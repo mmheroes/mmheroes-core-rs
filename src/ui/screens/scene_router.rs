@@ -1,57 +1,77 @@
 use crate::logic::*;
-use crate::ui::renderer::Line;
+use crate::ui::renderer::{Line, Renderer};
 use crate::ui::*;
 
 pub(in crate::ui) fn display_scene_router(
     r: &mut Renderer,
     state: &GameState,
 ) -> WaitingState {
-    let today = state.current_day();
-    display_character_stats(r, today, state.current_time(), state.player());
-    display_knowledge(r, state.player());
-    display_short_today_timetable(r, today, state.player());
+    display_header_stats(r, state);
+    display_short_today_timetable(r, state.current_day(), state.player());
     r.set_color(Color::White, Color::Black);
     r.move_cursor_to(7, 0);
     let mut options = tiny_vec![capacity: 16];
+
+    let i_am_done = ("С меня хватит!", Color::BlueBright, Action::IAmDone);
     match state.location() {
         Location::PUNK => todo!(),
         Location::PDMI => todo!(),
         Location::ComputerClass => {
-            writeln!(r, "Ты в компьютерном классе. Что делать");
+            writeln!(r, "Ты в компьютерном классе. Что делать?");
             // TODO: Здесь может быть Климов
-            options.push(("Пойти в общагу", Color::CyanBright));
-            options.push(("Покинуть класс", Color::CyanBright));
-            options.push(("Поехать в ПОМИ", Color::CyanBright));
-            options.push(("Пойти в мавзолей", Color::CyanBright));
+            options.push(("Пойти в общагу", Color::CyanBright, Action::GoToDorm));
+            options.push(("Покинуть класс", Color::CyanBright, Action::GoToPUNK));
+            options.push(("Поехать в ПОМИ", Color::CyanBright, Action::GoToPDMI));
+            options.push(("Пойти в мавзолей", Color::CyanBright, Action::GoToMausoleum));
             if state.player().has_internet() {
-                options.push(("Провести 1 час в Inet'е", Color::CyanBright));
+                options.push((
+                    "Провести 1 час в Inet'е",
+                    Color::CyanBright,
+                    Action::SurfInternet,
+                ));
             }
             // TODO: Здесь могут быть однокурсники и Кузьменко
             if state.player().has_mmheroes_floppy() {
-                options.push(("Поиграть в MMHEROES", Color::CyanBright));
+                options.push((
+                    "Поиграть в MMHEROES",
+                    Color::CyanBright,
+                    Action::PlayMMHEROES,
+                ));
             }
-            options.push(("С меня хватит!", Color::BlueBright));
+            options.push(i_am_done);
         }
         Location::Dorm => {
-            writeln!(r, "Ты в общаге. Что делать");
-            options.push(("Готовиться", Color::CyanBright));
-            options.push(("Посмотреть расписание", Color::CyanBright));
-            options.push(("Отдыхать", Color::CyanBright));
-            options.push(("Лечь спать", Color::CyanBright));
-            options.push(("Пойти на факультет", Color::CyanBright));
-            options.push(("Поехать в ПОМИ", Color::CyanBright));
-            options.push(("Пойти в мавзолей", Color::CyanBright));
-            options.push(("С меня хватит!", Color::BlueBright));
-            options.push(("ЧТО ДЕЛАТЬ ", Color::BlueBright));
+            writeln!(r, "Ты в общаге. Что делать?");
+            options.push(("Готовиться", Color::CyanBright, Action::Study));
+            options.push((
+                "Посмотреть расписание",
+                Color::CyanBright,
+                Action::ViewTimetable,
+            ));
+            options.push(("Отдыхать", Color::CyanBright, Action::Rest));
+            options.push(("Лечь спать", Color::CyanBright, Action::GoToBed));
+            options.push(("Пойти на факультет", Color::CyanBright, Action::GoToPUNK));
+            options.push(("Поехать в ПОМИ", Color::CyanBright, Action::GoToPDMI));
+            options.push(("Пойти в мавзолей", Color::CyanBright, Action::GoToMausoleum));
+            options.push(i_am_done);
+            options.push(("ЧТО ДЕЛАТЬ ???", Color::BlueBright, Action::WhatToDo));
         }
         Location::Mausoleum => {
-            writeln!(r, "Ты в мавзолее. Что делать");
-            options.push(("Идти в ПУНК", Color::CyanBright));
-            options.push(("Поехать в ПОМИ", Color::CyanBright));
-            options.push(("Идти в общагу", Color::CyanBright));
-            options.push(("Отдыхать", Color::CyanBright));
-            // TODO: Здесь могут быть однокурсники
-            options.push(("С меня хватит!", Color::BlueBright));
+            writeln!(r, "Ты в мавзолее. Что делать?");
+            options.push(("Идти в ПУНК", Color::CyanBright, Action::GoToPUNK));
+            options.push(("Поехать в ПОМИ", Color::CyanBright, Action::GoToPDMI));
+            options.push(("Идти в общагу", Color::CyanBright, Action::GoToDorm));
+            options.push(("Отдыхать", Color::CyanBright, Action::Rest));
+            for classmate_info in
+                state.classmates().filter_by_location(Location::Mausoleum)
+            {
+                options.push((
+                    classmate_name(classmate_info.classmate()),
+                    Color::YellowBright,
+                    Action::InteractWithClassmate(classmate_info.classmate()),
+                ));
+            }
+            options.push(i_am_done);
         }
     }
     r.move_cursor_to(9, 0);
@@ -64,6 +84,11 @@ pub(in crate::ui) fn display_scene_router(
     } else {
         dialog(r, options)
     }
+}
+
+pub(in crate::ui::screens) fn display_header_stats(r: &mut Renderer, state: &GameState) {
+    display_character_stats(r, state.current_day(), state.current_time(), state.player());
+    display_knowledge(r, state.player());
 }
 
 fn display_character_stats(r: &mut Renderer, today: &Day, now: Time, player: &Player) {
@@ -212,7 +237,11 @@ fn display_knowledge(r: &mut Renderer, player: &Player) {
     }
 }
 
-fn display_short_today_timetable(r: &mut Renderer, today: &Day, player: &Player) {
+pub(in crate::ui::screens) fn display_short_today_timetable(
+    r: &mut Renderer,
+    today: &Day,
+    player: &Player,
+) {
     for (i, (subject, subject_info)) in SUBJECTS.iter().enumerate() {
         let line = (i as Line) + 9;
         r.move_cursor_to(line, 50);
@@ -239,7 +268,7 @@ fn display_short_today_timetable(r: &mut Renderer, today: &Day, player: &Player)
         let problems_color = if problems_done == 0 {
             Color::White
         } else if problems_done == problems_required {
-            Color::Yellow
+            Color::YellowBright
         } else {
             Color::Green
         };
