@@ -540,6 +540,8 @@ impl Game {
                 // "Зря, ой, зря ..."
                 // "Коля достает тормозную жидкость, и вы распиваете еще по стакану."
                 state.player.brain -= 1;
+                // Забавно, что в этой ветке можно бесконечно пить тормозную жидкость
+                // и никогда не спиться. Наверное, баг в оригинальной реализации.
                 self.screen = GameScreen::KolyaInteraction(
                     state,
                     npc::KolyaInteraction::BrakeFluidBecauseRefused,
