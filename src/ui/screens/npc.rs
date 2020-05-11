@@ -7,6 +7,8 @@ pub(in crate::ui) fn display_kolya_interaction(
     state: &GameState,
     interaction: npc::KolyaInteraction,
 ) -> WaitingState {
+    use KolyaInteraction::*;
+
     scene_router::display_header_stats(r, state);
 
     let today_timetable = |r: &mut Renderer| {
@@ -43,54 +45,60 @@ pub(in crate::ui) fn display_kolya_interaction(
         write_colored!(White, r, "Коля решил тебе еще ");
         write_colored!(WhiteBright, r, "{}", 2);
         writeln_colored!(White, r, " задачи по алгебре!");
-        wait_for_any_key(r)
     };
 
     r.move_cursor_to(7, 0);
     writeln_colored!(White, r, "Коля смотрит на тебя немного окосевшими глазами.");
 
+    if interaction == SolvedAlgebraProblemsForFree {
+        solved_algebra_problems(r);
+        return wait_for_any_key(r);
+    }
+
+    oat_tincture_is_better(r);
+
+    if interaction == BrakeFluidNoMoney {
+        r.move_cursor_to(14, 0);
+        brake_fluid(r);
+        return wait_for_any_key(r);
+    }
+
+    writeln_colored!(White, r, "Заказать Коле настойку овса?");
+    today_timetable(r);
+    r.move_cursor_to(14, 0);
+
+    let prompt_options = tiny_vec!(capacity: 16, [
+        ("Да", Color::CyanBright, Action::Yes),
+        ("Нет", Color::CyanBright, Action::No),
+    ]);
+
+    if interaction == PromptOatTincture {
+        return dialog(r, prompt_options);
+    } else {
+        inactive_dialog(r, &prompt_options);
+    }
+
+    r.move_cursor_to(18, 0);
+
     match interaction {
-        KolyaInteraction::SolvedAlgebraProblemsForFree => solved_algebra_problems(r),
-        KolyaInteraction::PromptOatTincture => {
-            oat_tincture_is_better(r);
-            writeln_colored!(White, r, "Заказать Коле настойку овса?");
-            today_timetable(r);
-            let options = tiny_vec!(capacity: 16, [
-                ("Да", Color::CyanBright, Action::Yes),
-                ("Нет", Color::CyanBright, Action::No),
-            ]);
-            r.move_cursor_to(14, 0);
-            dialog(r, options)
-        }
-        KolyaInteraction::SolvedAlgebraProblemsForOatTincture => {
-            today_timetable(r);
-            r.move_cursor_to(18, 0);
-            solved_algebra_problems(r)
-        }
-        KolyaInteraction::BrakeFluidNoMoney => {
-            oat_tincture_is_better(r);
-            r.move_cursor_to(14, 0);
-            brake_fluid(r);
-            wait_for_any_key(r)
-        }
-        KolyaInteraction::BrakeFluidBecauseRefused => {
-            today_timetable(r);
-            r.move_cursor_to(18, 0);
+        SolvedAlgebraProblemsForOatTincture => solved_algebra_problems(r),
+        BrakeFluidBecauseRefused => {
             writeln_colored!(WhiteBright, r, "\"Зря, ой, зря ...\"");
             brake_fluid(r);
-            wait_for_any_key(r)
         }
-        KolyaInteraction::Altruism => {
-            today_timetable(r);
-            r.move_cursor_to(18, 0);
+        Altruism => {
             writeln_colored!(
                 White,
                 r,
                 "Твой альтруизм навсегда останется в памяти потомков."
             );
-            wait_for_any_key(r)
+        }
+        SolvedAlgebraProblemsForFree | PromptOatTincture | BrakeFluidNoMoney => {
+            unreachable!();
         }
     }
+
+    wait_for_any_key(r)
 }
 
 pub(in crate::ui) fn display_pasha_interaction(
