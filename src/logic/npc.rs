@@ -1,4 +1,4 @@
-use crate::logic::{Day, Location, Subject, Time, HealthLevel};
+use crate::logic::{Day, HealthLevel, Location, Subject, Time};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Classmate {
@@ -19,15 +19,16 @@ pub enum Classmate {
 impl Classmate {
     pub(in crate::logic) fn health_penalty(self) -> HealthLevel {
         match self {
-            Kolya | Pasha | Diamond | Kuzmenko | DJuG | Andrew | Grisha | Misha | Serj
-            | Sasha => HealthLevel(0),
+            Kolya | Pasha | Diamond | Kuzmenko | DJuG | Andrew | Grisha | Misha
+            | Serj | Sasha => HealthLevel(0),
             RAI | NiL => HealthLevel(8),
         }
     }
 
     pub(in crate::logic) fn annoyance(self) -> i16 {
         match self {
-            Kolya | Pasha | Diamond | Serj | Sasha | Kuzmenko | DJuG | Andrew | Grisha => 0,
+            Kolya | Pasha | Diamond | Serj | Sasha | Kuzmenko | DJuG | Andrew
+            | Grisha => 0,
             RAI => 4,
             Misha => 2,
             NiL => 6,
