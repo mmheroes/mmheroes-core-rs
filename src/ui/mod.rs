@@ -189,6 +189,11 @@ impl GameUI<'_> {
                 self.game.available_actions(),
                 state,
             ),
+            RestInMausoleum(state) => screens::rest::display_rest_in_mausoleum(
+                &mut self.renderer,
+                self.game.available_actions(),
+                state,
+            ),
             KolyaInteraction(state, interaction) => {
                 screens::npc::display_kolya_interaction(
                     &mut self.renderer,

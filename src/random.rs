@@ -90,6 +90,16 @@ impl Rng {
     pub(crate) fn random_element<'a, T>(&mut self, slice: &'a [T]) -> &'a T {
         &slice[self.random_number_with_upper_bound(slice.len() as u64) as usize]
     }
+
+    pub(crate) fn roll_dice<B: TryFrom<u64> + TryInto<u64> + Copy>(
+        &mut self,
+        sides: B,
+    ) -> bool {
+        self.random_number_with_upper_bound(sides)
+            .try_into()
+            .unwrap_or_else(|_| panic!())
+            == 0u64
+    }
 }
 
 #[cfg(test)]

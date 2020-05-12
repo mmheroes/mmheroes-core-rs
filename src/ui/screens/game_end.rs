@@ -3,7 +3,7 @@ use crate::ui::{renderer::Renderer, *};
 
 pub(in crate::ui) fn display_i_am_done(r: &mut Renderer) -> WaitingState {
     writeln_colored!(White, r, "Ну, может не надо так резко...");
-    writeln_colored!(White, r, "Ты что, серьезно хочешь закончить игру");
+    writeln_colored!(White, r, "Ты что, серьезно хочешь закончить игру?");
     writeln!(r);
 
     let options = tiny_vec!(capacity: 16, [

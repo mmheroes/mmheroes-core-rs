@@ -122,6 +122,21 @@ impl Money {
     pub const fn stipend() -> Money {
         Money(50)
     }
+
+    /// Стоимость стакана колы в мавзолее
+    pub const fn cola_cost() -> Money {
+        Money(4)
+    }
+
+    /// Стоимость супа в мавзолее
+    pub const fn soup_cost() -> Money {
+        Money(6)
+    }
+
+    /// Стоимость пива в мавзолее
+    pub const fn beer_cost() -> Money {
+        Money(8)
+    }
 }
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]

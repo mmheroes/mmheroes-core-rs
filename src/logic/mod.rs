@@ -44,6 +44,9 @@ pub enum Action {
     GoToProfessor,
     GoToWork,
     LookAtBestScores,
+    OrderCola,
+    OrderSoup,
+    OrderBeer,
     IAmDone,
     WhatToDo,
     AboutScreen,
@@ -148,6 +151,9 @@ pub enum GameScreen {
 
     /// Главный экран.
     SceneRouter(GameState),
+
+    /// Отдых в мавзолее.
+    RestInMausoleum(GameState),
 
     /// Взаимодействие с Колей.
     KolyaInteraction(GameState, npc::KolyaInteraction),
@@ -258,7 +264,8 @@ impl Game {
             | AboutCharacters(state)
             | AboutThisProgram(state)
             | KolyaInteraction(state, _)
-            | PashaInteraction(state, _) => Some(state),
+            | PashaInteraction(state, _)
+            | RestInMausoleum(state) => Some(state),
             Intro | InitialParameters | Ding(_) | WannaTryAgain | Disclaimer
             | Terminal => None,
         }
@@ -293,6 +300,10 @@ impl Game {
             SceneRouter(state) => {
                 let state = state.clone();
                 self.handle_scene_router_action(state, action)
+            }
+            RestInMausoleum(state) => {
+                let state = state.clone();
+                self.handle_rest_in_mausoleum(state, action)
             }
             KolyaInteraction(state, interaction) => {
                 let state = state.clone();
@@ -727,6 +738,56 @@ impl Game {
         }
     }
 
+    fn handle_rest_in_mausoleum(
+        &mut self,
+        mut state: GameState,
+        action: Action,
+    ) -> usize {
+        let player = &mut state.player;
+        match action {
+            Action::OrderCola => {
+                assert!(player.money >= Money::cola_cost());
+                player.money -= Money::cola_cost();
+                player.health +=
+                    self.rng.random_number_with_upper_bound(player.charisma.0) + 3;
+            }
+            Action::OrderSoup => {
+                assert!(player.money >= Money::soup_cost());
+                player.money -= Money::soup_cost();
+                player.health +=
+                    self.rng.random_number_with_upper_bound(player.charisma.0) + 5;
+            }
+            Action::OrderBeer => {
+                assert!(player.money >= Money::beer_cost());
+                player.money -= Money::beer_cost();
+                if self.rng.roll_dice(3) {
+                    player.brain -= 1;
+                }
+                if self.rng.roll_dice(3) {
+                    player.charisma += 1;
+                }
+                if self.rng.roll_dice(3) {
+                    player.stamina += 2;
+                }
+                player.health +=
+                    self.rng.random_number_with_upper_bound(player.charisma.0);
+                if player.brain <= BrainLevel(0) {
+                    player.health = HealthLevel(0);
+                    player.cause_of_death = Some(CauseOfDeath::BeerAlcoholism);
+                    return self.game_end(state);
+                }
+            }
+            Action::Rest => {
+                player.health +=
+                    self.rng.random_number_with_upper_bound(player.charisma.0);
+            }
+            Action::GoBack => return self.scene_router(state),
+            _ => illegal_action!(action),
+        }
+
+        self.hour_pass(state)
+    }
+
     fn handle_mausoleum_action(&mut self, mut state: GameState, action: Action) -> usize {
         assert!(state.location == Location::Mausoleum);
         match action {
@@ -744,7 +805,18 @@ impl Game {
                 state.location = Location::Dorm;
                 self.scene_router(state)
             }
-            Action::Rest => todo!(),
+            Action::Rest => {
+                let money = state.player.money;
+                self.screen = GameScreen::RestInMausoleum(state);
+                // - (Стакан колы за 4 р.)?
+                // - (Суп, 6 р. все удовольствие)?
+                // - (0,5 пива за 8 р.)?
+                // - Расслабляться будем своими силами.
+                // - Нет, отдыхать - это я зря сказал.
+                2 + ((money >= Money::cola_cost()) as usize)
+                    + ((money >= Money::soup_cost()) as usize)
+                    + ((money >= Money::cola_cost()) as usize)
+            }
             Action::InteractWithClassmate(Kolya) => {
                 assert!(matches!(
                     state.classmates[Kolya].current_location(),
@@ -766,6 +838,7 @@ impl Game {
                 ));
                 todo!()
             }
+            Action::IAmDone => self.i_am_done(state),
             _ => illegal_action!(action),
         }
     }
