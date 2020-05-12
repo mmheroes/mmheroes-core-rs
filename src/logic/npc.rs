@@ -1,4 +1,4 @@
-use crate::logic::{Day, Location, Subject, Time};
+use crate::logic::{Day, Location, Subject, Time, HealthLevel};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Classmate {
@@ -14,6 +14,25 @@ pub enum Classmate {
     DJuG,
     Andrew,
     Grisha,
+}
+
+impl Classmate {
+    pub(in crate::logic) fn health_penalty(self) -> HealthLevel {
+        match self {
+            Kolya | Pasha | Diamond | Kuzmenko | DJuG | Andrew | Grisha | Misha | Serj
+            | Sasha => HealthLevel(0),
+            RAI | NiL => HealthLevel(8),
+        }
+    }
+
+    pub(in crate::logic) fn annoyance(self) -> i16 {
+        match self {
+            Kolya | Pasha | Diamond | Serj | Sasha | Kuzmenko | DJuG | Andrew | Grisha => 0,
+            RAI => 4,
+            Misha => 2,
+            NiL => 6,
+        }
+    }
 }
 
 use Classmate::*;
@@ -98,25 +117,6 @@ impl ClassmateInfo {
             Andrew => { /* TODO */ }
             Grisha => { /* TODO */ }
         }
-    }
-}
-
-// TODO: Rename
-fn classmate_member0x32c(classmate: Classmate) -> u8 {
-    match classmate {
-        Kolya | Pasha | Diamond | Serj | Sasha | Kuzmenko | DJuG | Andrew | Grisha => 0,
-        RAI => 4,
-        Misha => 2,
-        NiL => 6,
-    }
-}
-
-// TODO: Rename
-fn classmate_member0x344(classmate: Classmate) -> u8 {
-    match classmate {
-        Kolya | Pasha | Diamond | Kuzmenko | DJuG | Andrew | Grisha | Misha | Serj
-        | Sasha => 0,
-        RAI | NiL => 8,
     }
 }
 
