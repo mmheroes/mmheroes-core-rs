@@ -33,7 +33,7 @@ impl<'output, Output: Write> InputRecorder<'output, Output> {
             let mangled = match last_input {
                 Input::KeyUp => '↑',
                 Input::KeyDown => '↓',
-                Input::Enter => '⏎',
+                Input::Enter => 'r',
                 Input::Other => '.',
             };
             if count == 1 {
@@ -81,7 +81,7 @@ impl<'input> InputRecordingParser<'input> {
         match c {
             '↑' => Ok(Input::KeyUp),
             '↓' => Ok(Input::KeyDown),
-            '⏎' => Ok(Input::Enter),
+            'r' => Ok(Input::Enter),
             '.' => Ok(Input::Other),
             _ => Err(InputRecordingParserError::UnknownCharacter { grapheme }),
         }
