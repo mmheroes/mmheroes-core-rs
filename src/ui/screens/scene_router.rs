@@ -4,7 +4,7 @@ use crate::ui::*;
 
 pub(in crate::ui) fn display_scene_router(
     r: &mut Renderer,
-    available_actions: usize,
+    available_actions: &[Action],
     state: &GameState,
 ) -> WaitingState {
     display_header_stats(r, state);
@@ -107,7 +107,17 @@ pub(in crate::ui) fn display_scene_router(
             options.push(i_am_done);
         }
     }
-    assert_eq!(available_actions, options.len());
+
+    assert!(
+        options
+            .iter()
+            .map(|x| x.2)
+            .eq(available_actions.iter().cloned()),
+        "{:?} is not equal to {:?}",
+        options,
+        available_actions
+    );
+
     r.move_cursor_to(9, 0);
     if state.failed_attempt_to_sleep() {
         assert!(state.location() == Location::Dorm);

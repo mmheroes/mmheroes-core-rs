@@ -63,6 +63,10 @@ macro_rules! illegal_action {
     };
 }
 
+fn wait_for_any_key() -> tiny_vec_ty![Action; 16] {
+    tiny_vec!(capacity: 16, [Action::AnyKey])
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum CauseOfDeath {
     /// Умер по пути на факультет.
@@ -218,15 +222,13 @@ pub enum GameMode {
     God,
 }
 
-pub const HELP_SCREEN_OPTION_COUNT: usize = 7;
-
 use GameScreen::*;
 
 pub struct Game {
     screen: GameScreen,
     rng: random::Rng,
     mode: GameMode,
-    available_actions: usize,
+    available_actions: tiny_vec_ty![Action; 16],
 }
 
 impl Game {
@@ -236,7 +238,7 @@ impl Game {
             screen: Intro,
             rng,
             mode,
-            available_actions: 1,
+            available_actions: wait_for_any_key(),
         }
     }
 
@@ -271,8 +273,8 @@ impl Game {
         }
     }
 
-    pub fn available_actions(&self) -> usize {
-        self.available_actions
+    pub fn available_actions(&self) -> &[Action] {
+        &*self.available_actions
     }
 
     pub fn perform_action(&mut self, action: Action) {
@@ -280,7 +282,7 @@ impl Game {
     }
 
     /// Accepts an action, returns the number of actions available in the updated state.
-    fn _perform_action(&mut self, action: Action) -> usize {
+    fn _perform_action(&mut self, action: Action) -> tiny_vec_ty![Action; 16] {
         match &self.screen {
             Terminal => panic!("Attempted to perform an action in terminal state"),
             Intro => self.start_game(),
@@ -323,7 +325,7 @@ impl Game {
             WannaTryAgain => self.handle_wanna_try_again(action),
             Disclaimer => {
                 self.screen = Terminal;
-                0
+                tiny_vec!(capacity: 16, [])
             }
             WhatToDo(state)
             | AboutScreen(state)
@@ -337,7 +339,7 @@ impl Game {
         }
     }
 
-    fn start_game(&mut self) -> usize {
+    fn start_game(&mut self) -> tiny_vec_ty![Action; 16] {
         match self.mode {
             GameMode::SelectInitialParameters => {
                 self.screen = InitialParameters;
@@ -346,7 +348,12 @@ impl Game {
                 // - Шибко умный
                 // - Шибко наглый
                 // - Шибко общительный
-                4
+                tiny_vec!(capacity: 16, [
+                    Action::RandomStudent,
+                    Action::CleverStudent,
+                    Action::ImpudentStudent,
+                    Action::SociableStudent,
+                ])
             }
             GameMode::God => {
                 self.screen = InitialParameters;
@@ -356,16 +363,21 @@ impl Game {
                 // - Шибко наглый
                 // - Шибко общительный
                 // - GOD-режим
-                5
+                tiny_vec!(capacity: 16, [
+                    Action::RandomStudent,
+                    Action::CleverStudent,
+                    Action::ImpudentStudent,
+                    Action::SociableStudent,
+                    Action::GodMode,
+                ])
             }
             GameMode::Normal => self.ding(Action::RandomStudent),
         }
     }
 
-    fn ding(&mut self, action: Action) -> usize {
+    fn ding(&mut self, action: Action) -> tiny_vec_ty![Action; 16] {
         self.screen = Ding(self.initialize_player(action));
-        // "Нажми любую клавишу ..."
-        1
+        wait_for_any_key()
     }
 
     fn initialize_player(&mut self, parameters: Action) -> Player {
@@ -408,7 +420,7 @@ impl Game {
         })
     }
 
-    fn scene_router(&mut self, state: GameState) -> usize {
+    fn scene_router(&mut self, state: GameState) -> tiny_vec_ty![Action; 16] {
         // TODO: assert that no exam is in progress
         let location = state.location;
         self.screen = GameScreen::SceneRouter(state);
@@ -416,29 +428,42 @@ impl Game {
         match location {
             Location::PDMI => todo!(),
             Location::PUNK => {
-                // - Идти к преподу
-                // - Посмотреть на баобаб
-                // - Пойти в общагу
-                // - Поехать в ПОМИ
-                // - Пойти в мавзолей
-                // - (Пойти в компьютерный класс)?
-                // - (Сходить в кафе)?
-                // - (NPC)*
-                // - (Пойти в ТЕРКОМ, поработать)?
-                // - С меня хватит!
-                6 + (state.current_time.is_computer_class_open() as usize)
-                    + (state.current_time.is_cafe_open() as usize)
-                    + state.classmates.filter_by_location(location).count()
-                    + (state.player.is_employed_at_terkom() as usize)
+                let mut available_actions = tiny_vec!(capacity: 16, [
+                    Action::GoToProfessor,
+                    Action::LookAtBestScores,
+                    Action::GoToDorm,
+                    Action::GoToPDMI,
+                    Action::GoToMausoleum,
+                ]);
+                if state.current_time.is_computer_class_open() {
+                    available_actions.push(Action::GoToComputerClass);
+                }
+                if state.current_time.is_cafe_open() {
+                    available_actions.push(Action::GoToCafe);
+                }
+                for classmate_info in state.classmates.filter_by_location(location) {
+                    available_actions
+                        .push(Action::InteractWithClassmate(classmate_info.classmate()));
+                }
+                if state.player.is_employed_at_terkom {
+                    available_actions.push(Action::GoToWork);
+                }
+                available_actions.push(Action::IAmDone);
+                available_actions
             }
             Location::Mausoleum => {
-                // - Идти в ПУНК
-                // - Поехать в ПОМИ
-                // - Идти в общагу
-                // - Отдыхать
-                // - (NPC)*
-                // - С меня хватит!
-                5 + state.classmates.filter_by_location(location).count()
+                let mut available_actions = tiny_vec!(capacity: 16, [
+                    Action::GoToPUNK,
+                    Action::GoToPDMI,
+                    Action::GoToDorm,
+                    Action::Rest,
+                ]);
+                for classmate_info in state.classmates.filter_by_location(location) {
+                    available_actions
+                        .push(Action::InteractWithClassmate(classmate_info.classmate()));
+                }
+                available_actions.push(Action::IAmDone);
+                available_actions
             }
             Location::Dorm => {
                 // - Готовиться
@@ -450,13 +475,27 @@ impl Game {
                 // - Пойти в мавзолей
                 // - С меня хватит!
                 // - ЧТО ДЕЛАТЬ ???
-                9
+                tiny_vec!(capacity: 16, [
+                    Action::Study,
+                    Action::ViewTimetable,
+                    Action::Rest,
+                    Action::GoToBed,
+                    Action::GoToPUNK,
+                    Action::GoToPDMI,
+                    Action::GoToMausoleum,
+                    Action::IAmDone,
+                    Action::WhatToDo,
+                ])
             }
             Location::ComputerClass => todo!(),
         }
     }
 
-    fn handle_scene_router_action(&mut self, state: GameState, action: Action) -> usize {
+    fn handle_scene_router_action(
+        &mut self,
+        state: GameState,
+        action: Action,
+    ) -> tiny_vec_ty![Action; 16] {
         match state.location() {
             Location::PUNK => self.handle_punk_action(state, action),
             Location::PDMI => todo!(),
@@ -466,7 +505,11 @@ impl Game {
         }
     }
 
-    fn handle_dorm_action(&mut self, mut state: GameState, action: Action) -> usize {
+    fn handle_dorm_action(
+        &mut self,
+        mut state: GameState,
+        action: Action,
+    ) -> tiny_vec_ty![Action; 16] {
         assert!(state.location == Location::Dorm);
         match action {
             Action::AnyKey => {
@@ -498,25 +541,20 @@ impl Game {
                 )
             }
             Action::IAmDone => self.i_am_done(state),
-            Action::WhatToDo => {
-                self.screen = WhatToDo(state);
-                HELP_SCREEN_OPTION_COUNT
-            }
+            Action::WhatToDo => self.handle_what_to_do(state, Action::WhatToDo),
             _ => illegal_action!(action),
         }
     }
 
-    fn interact_with_pasha(&mut self, state: GameState) -> usize {
+    fn interact_with_pasha(&mut self, state: GameState) -> tiny_vec_ty![Action; 16] {
         assert_eq!(state.location, Location::PUNK);
         let interaction = if state.player.got_stipend {
             npc::PashaInteraction::Inspiration
         } else {
             npc::PashaInteraction::Stipend
         };
-
         self.screen = GameScreen::PashaInteraction(state, interaction);
-        // "Нажми любую клавишу ..."
-        1
+        wait_for_any_key()
     }
 
     fn proceed_with_pasha(
@@ -524,7 +562,7 @@ impl Game {
         mut state: GameState,
         action: Action,
         interaction: npc::PashaInteraction,
-    ) -> usize {
+    ) -> tiny_vec_ty![Action; 16] {
         assert_eq!(action, Action::AnyKey);
         assert_eq!(state.location, Location::PUNK);
         assert!(matches!(self.screen, GameScreen::PashaInteraction(_, _)));
@@ -547,7 +585,11 @@ impl Game {
         self.scene_router(state)
     }
 
-    fn handle_punk_action(&mut self, mut state: GameState, action: Action) -> usize {
+    fn handle_punk_action(
+        &mut self,
+        mut state: GameState,
+        action: Action,
+    ) -> tiny_vec_ty![Action; 16] {
         assert_eq!(state.location, Location::PUNK);
         match action {
             Action::GoToProfessor => todo!(),
@@ -621,7 +663,7 @@ impl Game {
     fn kolya_maybe_solve_algebra_problems(
         &mut self,
         player: &mut Player,
-    ) -> Option<usize> {
+    ) -> Option<tiny_vec_ty![Action; 16]> {
         use Subject::AlgebraAndNumberTheory;
         let has_enough_charisma =
             player.charisma > self.rng.random_number_with_upper_bound(CharismaLevel(10));
@@ -630,34 +672,35 @@ impl Game {
         let required_problems = SUBJECTS[AlgebraAndNumberTheory].1.required_problems;
         let has_at_least_2_remaining_problems = problems_done + 2 <= required_problems;
         if has_enough_charisma && has_at_least_2_remaining_problems {
-            // "Нажми любую клавишу ..."
-            Some(1)
+            Some(wait_for_any_key())
         } else {
             None
         }
     }
 
-    fn interact_with_kolya(&mut self, mut state: GameState) -> usize {
+    fn interact_with_kolya(&mut self, mut state: GameState) -> tiny_vec_ty![Action; 16] {
         assert_eq!(state.location, Location::Mausoleum);
         let player = &mut state.player;
-        let (num_actions, interaction) =
-            if let Some(num_actions) = self.kolya_maybe_solve_algebra_problems(player) {
-                (
-                    num_actions,
-                    npc::KolyaInteraction::SolvedAlgebraProblemsForFree,
-                )
-            } else if player.money < Money::oat_tincture_cost() {
-                // "Коля достает тормозную жидкость, и вы распиваете еще по стакану."
-                // "Нажми любую клавишу ..."
-                (1, npc::KolyaInteraction::BrakeFluidNoMoney)
-            } else {
-                // "Знаешь, пиво, конечно, хорошо, но настойка овса - лучше!"
-                // "Заказать Коле настойку овса?"
-                // "Да" или "Нет"
-                (2, npc::KolyaInteraction::PromptOatTincture)
-            };
+        let (available_actions, interaction) = if let Some(available_actions) =
+            self.kolya_maybe_solve_algebra_problems(player)
+        {
+            (
+                available_actions,
+                npc::KolyaInteraction::SolvedAlgebraProblemsForFree,
+            )
+        } else if player.money < Money::oat_tincture_cost() {
+            // "Коля достает тормозную жидкость, и вы распиваете еще по стакану."
+            (wait_for_any_key(), npc::KolyaInteraction::BrakeFluidNoMoney)
+        } else {
+            // "Знаешь, пиво, конечно, хорошо, но настойка овса - лучше!"
+            // "Заказать Коле настойку овса?"
+            (
+                tiny_vec!(capacity: 16, [Action::Yes, Action::No]),
+                npc::KolyaInteraction::PromptOatTincture,
+            )
+        };
         self.screen = GameScreen::KolyaInteraction(state, interaction);
-        num_actions
+        available_actions
     }
 
     fn proceed_with_kolya(
@@ -665,7 +708,7 @@ impl Game {
         mut state: GameState,
         action: Action,
         interaction: npc::KolyaInteraction,
-    ) -> usize {
+    ) -> tiny_vec_ty![Action; 16] {
         assert_eq!(state.location, Location::Mausoleum);
         assert!(matches!(self.screen, GameScreen::KolyaInteraction(_, _)));
         let player = &mut state.player;
@@ -719,8 +762,7 @@ impl Game {
                         state,
                         npc::KolyaInteraction::Altruism,
                     );
-                    // "Нажми любую клавишу ..."
-                    1
+                    wait_for_any_key()
                 }
             }
             Action::No => {
@@ -731,8 +773,7 @@ impl Game {
                     state,
                     npc::KolyaInteraction::BrakeFluidBecauseRefused,
                 );
-                // "Нажми любую клавишу ..."
-                1
+                wait_for_any_key()
             }
             _ => illegal_action!(action),
         }
@@ -742,7 +783,7 @@ impl Game {
         &mut self,
         mut state: GameState,
         action: Action,
-    ) -> usize {
+    ) -> tiny_vec_ty![Action; 16] {
         let player = &mut state.player;
         match action {
             Action::OrderCola => {
@@ -788,7 +829,11 @@ impl Game {
         self.hour_pass(state)
     }
 
-    fn handle_mausoleum_action(&mut self, mut state: GameState, action: Action) -> usize {
+    fn handle_mausoleum_action(
+        &mut self,
+        mut state: GameState,
+        action: Action,
+    ) -> tiny_vec_ty![Action; 16] {
         assert!(state.location == Location::Mausoleum);
         match action {
             Action::GoToPUNK => {
@@ -813,9 +858,19 @@ impl Game {
                 // - (0,5 пива за 8 р.)?
                 // - Расслабляться будем своими силами.
                 // - Нет, отдыхать - это я зря сказал.
-                2 + ((money >= Money::cola_cost()) as usize)
-                    + ((money >= Money::soup_cost()) as usize)
-                    + ((money >= Money::cola_cost()) as usize)
+                let mut available_actions = tiny_vec!(capacity: 16);
+                if money >= Money::cola_cost() {
+                    available_actions.push(Action::OrderCola);
+                }
+                if money >= Money::soup_cost() {
+                    available_actions.push(Action::OrderSoup);
+                }
+                if money >= Money::beer_cost() {
+                    available_actions.push(Action::OrderBeer);
+                }
+                available_actions.push(Action::Rest);
+                available_actions.push(Action::GoBack);
+                available_actions
             }
             Action::InteractWithClassmate(Kolya) => {
                 assert!(matches!(
@@ -843,19 +898,18 @@ impl Game {
         }
     }
 
-    fn view_timetable(&mut self, state: GameState) -> usize {
+    fn view_timetable(&mut self, state: GameState) -> tiny_vec_ty![Action; 16] {
         self.screen = Timetable(state);
-        // "Нажми любую клавишу ..."
-        1
+        wait_for_any_key()
     }
 
-    fn decrease_health<F: FnOnce(&mut Game, GameState) -> usize>(
+    fn decrease_health<F: FnOnce(&mut Game, GameState) -> tiny_vec_ty![Action; 16]>(
         &mut self,
         delta: HealthLevel,
         mut state: GameState,
         cause_of_death: CauseOfDeath,
         if_alive: F,
-    ) -> usize {
+    ) -> tiny_vec_ty![Action; 16] {
         if state.player.health <= delta {
             state.player.cause_of_death = Some(cause_of_death);
             self.game_end(state)
@@ -865,7 +919,7 @@ impl Game {
         }
     }
 
-    fn try_to_sleep(&mut self, mut state: GameState) -> usize {
+    fn try_to_sleep(&mut self, mut state: GameState) -> tiny_vec_ty![Action; 16] {
         assert!(state.location == Location::Dorm);
         if state.current_time > Time(3) && state.current_time < Time(20) {
             state.failed_attempt_to_sleep = true;
@@ -875,11 +929,11 @@ impl Game {
         }
     }
 
-    fn go_to_sleep(&mut self, _state: GameState) -> usize {
+    fn go_to_sleep(&mut self, _state: GameState) -> tiny_vec_ty![Action; 16] {
         todo!()
     }
 
-    fn midnight(&mut self, state: GameState) -> usize {
+    fn midnight(&mut self, state: GameState) -> tiny_vec_ty![Action; 16] {
         match state.location {
             Location::PUNK => todo!("sub_1E907"),
             Location::PDMI => todo!("sub_1E7F8"),
@@ -901,7 +955,7 @@ impl Game {
         }
     }
 
-    fn hour_pass(&mut self, mut state: GameState) -> usize {
+    fn hour_pass(&mut self, mut state: GameState) -> tiny_vec_ty![Action; 16] {
         // TODO: Lot of stuff going on here
 
         // TODO: Поменять эти строки местами и не забыть отредактировать метод
@@ -918,17 +972,21 @@ impl Game {
         self.scene_router(state)
     }
 
-    fn rest_in_dorm(&mut self, mut state: GameState) -> usize {
+    fn rest_in_dorm(&mut self, mut state: GameState) -> tiny_vec_ty![Action; 16] {
         state.player.health += self.rng.random_number_in_range(7..15);
         self.hour_pass(state)
     }
 
-    fn i_am_done(&mut self, state: GameState) -> usize {
+    fn i_am_done(&mut self, state: GameState) -> tiny_vec_ty![Action; 16] {
         self.screen = IAmDone(state);
-        2
+        tiny_vec!(capacity: 16, [Action::No, Action::Yes])
     }
 
-    fn handle_i_am_done(&mut self, state: GameState, action: Action) -> usize {
+    fn handle_i_am_done(
+        &mut self,
+        state: GameState,
+        action: Action,
+    ) -> tiny_vec_ty![Action; 16] {
         match action {
             Action::No => self.scene_router(state),
             Action::Yes => self.game_end(state),
@@ -936,31 +994,33 @@ impl Game {
         }
     }
 
-    fn game_end(&mut self, state: GameState) -> usize {
+    fn game_end(&mut self, state: GameState) -> tiny_vec_ty![Action; 16] {
         self.screen = GameEnd(state);
-        // "Нажми любую клавишу ..."
-        1
+        wait_for_any_key()
     }
 
-    fn wanna_try_again(&mut self) -> usize {
+    fn wanna_try_again(&mut self) -> tiny_vec_ty![Action; 16] {
         self.screen = WannaTryAgain;
         // Хочешь попробовать снова? Да или нет.
-        2
+        tiny_vec!(capacity: 16, [Action::Yes, Action::No])
     }
 
-    fn handle_wanna_try_again(&mut self, action: Action) -> usize {
+    fn handle_wanna_try_again(&mut self, action: Action) -> tiny_vec_ty![Action; 16] {
         match action {
             Action::Yes => self.start_game(),
             Action::No => {
                 self.screen = Disclaimer;
-                // "Нажми любую клавишу ..."
-                1
+                wait_for_any_key()
             }
             _ => illegal_action!(action),
         }
     }
 
-    fn handle_what_to_do(&mut self, state: GameState, action: Action) -> usize {
+    fn handle_what_to_do(
+        &mut self,
+        state: GameState,
+        action: Action,
+    ) -> tiny_vec_ty![Action; 16] {
         assert_eq!(state.location(), Location::Dorm);
         match action {
             Action::WhatToDo => self.screen = WhatToDo(state),
@@ -974,6 +1034,14 @@ impl Game {
             }
             _ => illegal_action!(action),
         };
-        HELP_SCREEN_OPTION_COUNT
+        tiny_vec!(capacity: 16, [
+            Action::WhatToDo,
+            Action::AboutScreen,
+            Action::WhereToGoAndWhy,
+            Action::AboutProfessors,
+            Action::AboutCharacters,
+            Action::AboutThisProgram,
+            Action::GoBack,
+        ])
     }
 }

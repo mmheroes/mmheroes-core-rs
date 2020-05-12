@@ -3,7 +3,7 @@ use crate::ui::{renderer::Renderer, screens::scene_router, *};
 
 pub(in crate::ui) fn display_rest_in_mausoleum(
     r: &mut Renderer,
-    available_actions: usize,
+    available_actions: &[Action],
     state: &GameState,
 ) -> WaitingState {
     scene_router::display_header_stats(r, state);
@@ -41,6 +41,14 @@ pub(in crate::ui) fn display_rest_in_mausoleum(
         Color::CyanBright,
         Action::GoBack,
     ));
-    assert_eq!(options.len(), available_actions);
+    assert!(
+        options
+            .iter()
+            .map(|x| x.2)
+            .eq(available_actions.iter().cloned()),
+        "{:?} is not equal to {:?}",
+        options,
+        available_actions
+    );
     dialog(r, options)
 }

@@ -94,14 +94,6 @@ macro_rules! ffi_destructor {
 ffi_constructor!(mmheroes_game_create, (mode: GameMode, seed: u64) -> Game);
 ffi_destructor!(mmheroes_game_destroy, (game: Game));
 
-/// Число возможных вариантов для выбора.
-///
-/// Аргумент `game` не должен быть нулевым указателем, иначе UB.
-#[no_mangle]
-pub extern "C" fn mmheroes_game_get_available_actions(game: &mut Game) -> usize {
-    ffi_safely_run(|| game.available_actions())
-}
-
 /// Записывает текущий игровой день и время в аргументы `out_day` и `out_time`
 /// и возвращает `true` если они доступны, иначе не трогает аргументы и возвращает
 /// `false`.

@@ -9,8 +9,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MMHEROES_HELP_SCREEN_OPTION_COUNT 7
-
 /**
  * Максимальное число возможных вариантов на главном экране.
  */
@@ -179,13 +177,6 @@ MMHEROES_Game *mmheroes_game_create(MMHEROES_GameMode mode,
 void mmheroes_game_destroy(MMHEROES_Game *game,
                            MMHEROES_AllocatorContext deallocator_context,
                            MMHEROES_Deallocator deallocator);
-
-/**
- * Число возможных вариантов для выбора.
- *
- * Аргумент `game` не должен быть нулевым указателем, иначе UB.
- */
-uintptr_t mmheroes_game_get_available_actions(MMHEROES_Game *game);
 
 /**
  * Записывает текущий игровой день и время в аргументы `out_day` и `out_time`
