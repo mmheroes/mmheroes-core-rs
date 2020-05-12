@@ -2,6 +2,7 @@
 
 use core::cmp::Ordering;
 use core::fmt::{Debug, Formatter, Result as FmtResult};
+use core::iter::{FromIterator, IntoIterator};
 use core::mem::MaybeUninit;
 use core::ops::{Deref, DerefMut};
 
@@ -199,6 +200,16 @@ macro_rules! __tiny_vec_implementation {
         impl<Element: Ord> Ord for tiny_vec_ty![Element; $capacity] {
             fn cmp(&self, other: &Self) -> Ordering {
                 Ord::cmp(&**self, &**other)
+            }
+        }
+
+        impl<Element> FromIterator<Element> for tiny_vec_ty![Element; $capacity] {
+            fn from_iter<I: IntoIterator<Item = Element>>(iter: I) -> Self {
+                let mut v = Self::new();
+                for element in iter {
+                    v.push(element);
+                }
+                v
             }
         }
     };

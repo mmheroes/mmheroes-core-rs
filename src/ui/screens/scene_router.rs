@@ -11,112 +11,24 @@ pub(in crate::ui) fn display_scene_router(
     display_short_today_timetable(r, 9, state.current_day(), state.player());
     r.set_color(Color::White, Color::Black);
     r.move_cursor_to(7, 0);
-    let mut options = tiny_vec![capacity: 16];
 
-    let push_classmates = |options: &mut tiny_vec_ty![DialogOption; 16]| {
-        for classmate_info in state.classmates().filter_by_location(state.location()) {
-            options.push((
-                classmate_name(classmate_info.classmate()),
-                Color::YellowBright,
-                Action::InteractWithClassmate(classmate_info.classmate()),
-            ));
-        }
-    };
-
-    let i_am_done = ("С меня хватит!", Color::BlueBright, Action::IAmDone);
     match state.location() {
         Location::PUNK => {
             writeln!(r, "Ты на факультете. Что делать?");
-            options.push(("Идти к преподу", Color::CyanBright, Action::GoToProfessor));
-            options.push((
-                "Посмотреть на баобаб",
-                Color::CyanBright,
-                Action::LookAtBestScores,
-            ));
-            options.push(("Пойти в общагу", Color::CyanBright, Action::GoToDorm));
-            options.push(("Поехать в ПОМИ", Color::CyanBright, Action::GoToPDMI));
-            options.push(("Пойти в мавзолей", Color::CyanBright, Action::GoToMausoleum));
-            if state.current_time().is_computer_class_open() {
-                options.push((
-                    "Пойти в компьютерный класс",
-                    Color::CyanBright,
-                    Action::GoToComputerClass,
-                ));
-            }
-            if state.current_time().is_cafe_open() {
-                options.push(("Сходить в кафе", Color::CyanBright, Action::GoToCafe));
-            }
-            push_classmates(&mut options);
-            if state.player().is_employed_at_terkom() {
-                options.push((
-                    "Пойти в ТЕРКОМ, поработать",
-                    Color::CyanBright,
-                    Action::GoToWork,
-                ));
-            }
-            options.push(i_am_done);
         }
         Location::PDMI => todo!(),
         Location::ComputerClass => {
             writeln!(r, "Ты в компьютерном классе. Что делать?");
-            // TODO: Здесь может быть Климов
-            options.push(("Пойти в общагу", Color::CyanBright, Action::GoToDorm));
-            options.push(("Покинуть класс", Color::CyanBright, Action::GoToPUNK));
-            options.push(("Поехать в ПОМИ", Color::CyanBright, Action::GoToPDMI));
-            options.push(("Пойти в мавзолей", Color::CyanBright, Action::GoToMausoleum));
-            if state.player().has_internet() {
-                options.push((
-                    "Провести 1 час в Inet'е",
-                    Color::CyanBright,
-                    Action::SurfInternet,
-                ));
-            }
-            // TODO: Здесь могут быть однокурсники и Кузьменко
-            if state.player().has_mmheroes_floppy() {
-                options.push((
-                    "Поиграть в MMHEROES",
-                    Color::CyanBright,
-                    Action::PlayMMHEROES,
-                ));
-            }
-            options.push(i_am_done);
         }
         Location::Dorm => {
             writeln!(r, "Ты в общаге. Что делать?");
-            options.push(("Готовиться", Color::CyanBright, Action::Study));
-            options.push((
-                "Посмотреть расписание",
-                Color::CyanBright,
-                Action::ViewTimetable,
-            ));
-            options.push(("Отдыхать", Color::CyanBright, Action::Rest));
-            options.push(("Лечь спать", Color::CyanBright, Action::GoToBed));
-            options.push(("Пойти на факультет", Color::CyanBright, Action::GoToPUNK));
-            options.push(("Поехать в ПОМИ", Color::CyanBright, Action::GoToPDMI));
-            options.push(("Пойти в мавзолей", Color::CyanBright, Action::GoToMausoleum));
-            options.push(i_am_done);
-            options.push(("ЧТО ДЕЛАТЬ ???", Color::BlueBright, Action::WhatToDo));
         }
         Location::Mausoleum => {
             writeln!(r, "Ты в мавзолее. Что делать?");
-            options.push(("Идти в ПУНК", Color::CyanBright, Action::GoToPUNK));
-            options.push(("Поехать в ПОМИ", Color::CyanBright, Action::GoToPDMI));
-            options.push(("Идти в общагу", Color::CyanBright, Action::GoToDorm));
-            options.push(("Отдыхать", Color::CyanBright, Action::Rest));
-            push_classmates(&mut options);
-            options.push(i_am_done);
         }
     }
 
-    assert!(
-        options
-            .iter()
-            .map(|x| x.2)
-            .eq(available_actions.iter().cloned()),
-        "{:?} is not equal to {:?}",
-        options,
-        available_actions
-    );
+    let options = dialog_options_for_actions(available_actions);
 
     r.move_cursor_to(9, 0);
     if state.failed_attempt_to_sleep() {

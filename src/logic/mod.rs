@@ -33,28 +33,38 @@ pub enum Action {
     ViewTimetable,
     Rest,
     GoToBed,
-    GoToDorm,
-    GoToPUNK,
+    GoFromPunkToDorm,
+    GoFromDormToPunk,
+    GoFromMausoleumToDorm,
+    GoFromMausoleumToPunk,
+    RestByOurselvesInMausoleum,
+    NoRestIsNoGood,
     GoToComputerClass,
+    LeaveComputerClass,
     GoToPDMI,
     GoToMausoleum,
-    GoToCafe,
+    GoToCafePUNK,
     SurfInternet,
     PlayMMHEROES,
     GoToProfessor,
     GoToWork,
-    LookAtBestScores,
+    LookAtBaobab,
     OrderCola,
     OrderSoup,
     OrderBeer,
     IAmDone,
+    NoIAmNotDone,
+    IAmCertainlyDone,
     WhatToDo,
+    WhatToDoAtAll,
+    WantToTryAgain,
+    DontWantToTryAgain,
     AboutScreen,
     WhereToGoAndWhy,
     AboutProfessors,
     AboutCharacters,
     AboutThisProgram,
-    GoBack,
+    ThanksButNothing,
 }
 
 macro_rules! illegal_action {
@@ -430,8 +440,8 @@ impl Game {
             Location::PUNK => {
                 let mut available_actions = tiny_vec!(capacity: 16, [
                     Action::GoToProfessor,
-                    Action::LookAtBestScores,
-                    Action::GoToDorm,
+                    Action::LookAtBaobab,
+                    Action::GoFromPunkToDorm,
                     Action::GoToPDMI,
                     Action::GoToMausoleum,
                 ]);
@@ -439,7 +449,7 @@ impl Game {
                     available_actions.push(Action::GoToComputerClass);
                 }
                 if state.current_time.is_cafe_open() {
-                    available_actions.push(Action::GoToCafe);
+                    available_actions.push(Action::GoToCafePUNK);
                 }
                 for classmate_info in state.classmates.filter_by_location(location) {
                     available_actions
@@ -453,9 +463,9 @@ impl Game {
             }
             Location::Mausoleum => {
                 let mut available_actions = tiny_vec!(capacity: 16, [
-                    Action::GoToPUNK,
+                    Action::GoFromMausoleumToPunk,
                     Action::GoToPDMI,
-                    Action::GoToDorm,
+                    Action::GoFromMausoleumToDorm,
                     Action::Rest,
                 ]);
                 for classmate_info in state.classmates.filter_by_location(location) {
@@ -465,28 +475,17 @@ impl Game {
                 available_actions.push(Action::IAmDone);
                 available_actions
             }
-            Location::Dorm => {
-                // - Готовиться
-                // - Посмотреть расписание
-                // - Отдыхать
-                // - Лечь спать
-                // - Пойти на факультет
-                // - Поехать в ПОМИ
-                // - Пойти в мавзолей
-                // - С меня хватит!
-                // - ЧТО ДЕЛАТЬ ???
-                tiny_vec!(capacity: 16, [
-                    Action::Study,
-                    Action::ViewTimetable,
-                    Action::Rest,
-                    Action::GoToBed,
-                    Action::GoToPUNK,
-                    Action::GoToPDMI,
-                    Action::GoToMausoleum,
-                    Action::IAmDone,
-                    Action::WhatToDo,
-                ])
-            }
+            Location::Dorm => tiny_vec!(capacity: 16, [
+                Action::Study,
+                Action::ViewTimetable,
+                Action::Rest,
+                Action::GoToBed,
+                Action::GoFromDormToPunk,
+                Action::GoToPDMI,
+                Action::GoToMausoleum,
+                Action::IAmDone,
+                Action::WhatToDo,
+            ]),
             Location::ComputerClass => todo!(),
         }
     }
@@ -521,7 +520,7 @@ impl Game {
             Action::ViewTimetable => self.view_timetable(state),
             Action::Rest => self.rest_in_dorm(state),
             Action::GoToBed => self.try_to_sleep(state),
-            Action::GoToPUNK => {
+            Action::GoFromDormToPunk => {
                 state.location = Location::PUNK;
                 self.decrease_health(
                     HealthLevel::location_change_large_penalty(),
@@ -541,7 +540,7 @@ impl Game {
                 )
             }
             Action::IAmDone => self.i_am_done(state),
-            Action::WhatToDo => self.handle_what_to_do(state, Action::WhatToDo),
+            Action::WhatToDo => self.handle_what_to_do(state, Action::WhatToDoAtAll),
             _ => illegal_action!(action),
         }
     }
@@ -593,8 +592,8 @@ impl Game {
         assert_eq!(state.location, Location::PUNK);
         match action {
             Action::GoToProfessor => todo!(),
-            Action::LookAtBestScores => todo!(),
-            Action::GoToDorm => {
+            Action::LookAtBaobab => todo!(),
+            Action::GoFromPunkToDorm => {
                 state.location = Location::Dorm;
                 self.scene_router(state)
             }
@@ -618,7 +617,7 @@ impl Game {
                     /*if_alive=*/ |game, state| game.scene_router(state),
                 )
             }
-            Action::GoToCafe => {
+            Action::GoToCafePUNK => {
                 assert!(state.current_time.is_cafe_open());
                 todo!()
             }
@@ -818,11 +817,11 @@ impl Game {
                     return self.game_end(state);
                 }
             }
-            Action::Rest => {
+            Action::RestByOurselvesInMausoleum => {
                 player.health +=
                     self.rng.random_number_with_upper_bound(player.charisma.0);
             }
-            Action::GoBack => return self.scene_router(state),
+            Action::NoRestIsNoGood => return self.scene_router(state),
             _ => illegal_action!(action),
         }
 
@@ -836,7 +835,7 @@ impl Game {
     ) -> tiny_vec_ty![Action; 16] {
         assert!(state.location == Location::Mausoleum);
         match action {
-            Action::GoToPUNK => {
+            Action::GoFromMausoleumToPunk => {
                 state.location = Location::PUNK;
                 self.decrease_health(
                     HealthLevel::location_change_large_penalty(),
@@ -846,7 +845,7 @@ impl Game {
                 )
             }
             Action::GoToPDMI => todo!(),
-            Action::GoToDorm => {
+            Action::GoFromPunkToDorm => {
                 state.location = Location::Dorm;
                 self.scene_router(state)
             }
@@ -868,8 +867,8 @@ impl Game {
                 if money >= Money::beer_cost() {
                     available_actions.push(Action::OrderBeer);
                 }
-                available_actions.push(Action::Rest);
-                available_actions.push(Action::GoBack);
+                available_actions.push(Action::RestByOurselvesInMausoleum);
+                available_actions.push(Action::NoRestIsNoGood);
                 available_actions
             }
             Action::InteractWithClassmate(Kolya) => {
@@ -979,7 +978,7 @@ impl Game {
 
     fn i_am_done(&mut self, state: GameState) -> tiny_vec_ty![Action; 16] {
         self.screen = IAmDone(state);
-        tiny_vec!(capacity: 16, [Action::No, Action::Yes])
+        tiny_vec!(capacity: 16, [Action::NoIAmNotDone, Action::IAmCertainlyDone])
     }
 
     fn handle_i_am_done(
@@ -988,8 +987,8 @@ impl Game {
         action: Action,
     ) -> tiny_vec_ty![Action; 16] {
         match action {
-            Action::No => self.scene_router(state),
-            Action::Yes => self.game_end(state),
+            Action::NoIAmNotDone => self.scene_router(state),
+            Action::IAmCertainlyDone => self.game_end(state),
             _ => illegal_action!(action),
         }
     }
@@ -1002,13 +1001,13 @@ impl Game {
     fn wanna_try_again(&mut self) -> tiny_vec_ty![Action; 16] {
         self.screen = WannaTryAgain;
         // Хочешь попробовать снова? Да или нет.
-        tiny_vec!(capacity: 16, [Action::Yes, Action::No])
+        tiny_vec!(capacity: 16, [Action::WantToTryAgain, Action::DontWantToTryAgain])
     }
 
     fn handle_wanna_try_again(&mut self, action: Action) -> tiny_vec_ty![Action; 16] {
         match action {
-            Action::Yes => self.start_game(),
-            Action::No => {
+            Action::WantToTryAgain => self.start_game(),
+            Action::DontWantToTryAgain => {
                 self.screen = Disclaimer;
                 wait_for_any_key()
             }
@@ -1023,25 +1022,25 @@ impl Game {
     ) -> tiny_vec_ty![Action; 16] {
         assert_eq!(state.location(), Location::Dorm);
         match action {
-            Action::WhatToDo => self.screen = WhatToDo(state),
+            Action::WhatToDoAtAll => self.screen = WhatToDo(state),
             Action::AboutScreen => self.screen = AboutScreen(state),
             Action::WhereToGoAndWhy => self.screen = WhereToGoAndWhy(state),
             Action::AboutProfessors => self.screen = AboutProfessors(state),
             Action::AboutCharacters => self.screen = AboutCharacters(state),
             Action::AboutThisProgram => self.screen = AboutThisProgram(state),
-            Action::GoBack => {
+            Action::ThanksButNothing => {
                 return self.scene_router(state);
             }
             _ => illegal_action!(action),
         };
         tiny_vec!(capacity: 16, [
-            Action::WhatToDo,
+            Action::WhatToDoAtAll,
             Action::AboutScreen,
             Action::WhereToGoAndWhy,
             Action::AboutProfessors,
             Action::AboutCharacters,
             Action::AboutThisProgram,
-            Action::GoBack,
+            Action::ThanksButNothing,
         ])
     }
 }

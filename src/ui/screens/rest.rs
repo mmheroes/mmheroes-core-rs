@@ -16,39 +16,5 @@ pub(in crate::ui) fn display_rest_in_mausoleum(
         state.player(),
     );
     r.move_cursor_to(10, 0);
-    let mut options = tiny_vec![capacity: 16];
-    let money = state.player().money();
-    if money >= Money::cola_cost() {
-        options.push(("Стакан колы за 4 р.", Color::CyanBright, Action::OrderCola));
-    }
-    if money >= Money::soup_cost() {
-        options.push((
-            "Суп, 6 р. все удовольствие",
-            Color::CyanBright,
-            Action::OrderSoup,
-        ));
-    }
-    if money >= Money::soup_cost() {
-        options.push(("0,5 пива за 8 р.", Color::CyanBright, Action::OrderBeer));
-    }
-    options.push((
-        "Расслабляться будем своими силами.",
-        Color::CyanBright,
-        Action::Rest,
-    ));
-    options.push((
-        "Нет, отдыхать - это я зря сказал.",
-        Color::CyanBright,
-        Action::GoBack,
-    ));
-    assert!(
-        options
-            .iter()
-            .map(|x| x.2)
-            .eq(available_actions.iter().cloned()),
-        "{:?} is not equal to {:?}",
-        options,
-        available_actions
-    );
-    dialog(r, options)
+    dialog(r, dialog_options_for_actions(available_actions))
 }

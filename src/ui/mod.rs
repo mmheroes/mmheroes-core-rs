@@ -178,6 +178,7 @@ impl GameUI<'_> {
             Intro => screens::initial::display_intro(&mut self.renderer),
             InitialParameters => screens::initial::display_initial_parameters(
                 &mut self.renderer,
+                self.game.available_actions(),
                 self.game.mode(),
             ),
             Ding(_) => screens::initial::display_ding(&mut self.renderer),
@@ -208,28 +209,42 @@ impl GameUI<'_> {
                     *interaction,
                 )
             }
-            IAmDone(_) => screens::game_end::display_i_am_done(&mut self.renderer),
+            IAmDone(_) => screens::game_end::display_i_am_done(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
             GameEnd(state) => {
                 screens::game_end::display_game_end(&mut self.renderer, state)
             }
-            WannaTryAgain => {
-                screens::game_end::display_wanna_try_again(&mut self.renderer)
-            }
+            WannaTryAgain => screens::game_end::display_wanna_try_again(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
             Disclaimer => screens::game_end::display_disclaimer(&mut self.renderer),
-            WhatToDo(_) => screens::help::display_what_to_do(&mut self.renderer),
-            AboutScreen(_) => screens::help::display_about_screen(&mut self.renderer),
-            WhereToGoAndWhy(_) => {
-                screens::help::display_where_to_go_and_why(&mut self.renderer)
-            }
-            AboutProfessors(_) => {
-                screens::help::display_about_professors(&mut self.renderer)
-            }
-            AboutCharacters(_) => {
-                screens::help::display_about_characters(&mut self.renderer)
-            }
-            AboutThisProgram(_) => {
-                screens::help::display_about_this_program(&mut self.renderer)
-            }
+            WhatToDo(_) => screens::help::display_what_to_do(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
+            AboutScreen(_) => screens::help::display_about_screen(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
+            WhereToGoAndWhy(_) => screens::help::display_where_to_go_and_why(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
+            AboutProfessors(_) => screens::help::display_about_professors(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
+            AboutCharacters(_) => screens::help::display_about_characters(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
+            AboutThisProgram(_) => screens::help::display_about_this_program(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
             Terminal => {
                 self.renderer.waiting_state = None;
                 return false;
@@ -385,4 +400,72 @@ pub fn classmate_name(classmate: Classmate) -> &'static str {
         Classmate::Andrew => "Эндрю",
         Classmate::Grisha => "Гриша",
     }
+}
+
+fn dialog_option_for_action(action: Action) -> DialogOption {
+    let option_name = match action {
+        Action::Yes => "Да",
+        Action::No => "Нет",
+        Action::InteractWithClassmate(classmate) => {
+            return (classmate_name(classmate), Color::YellowBright, action);
+        }
+        Action::InteractWithProfessor(subject) => professor_name(subject),
+        Action::RandomStudent => "Случайный студент",
+        Action::CleverStudent => "Шибко умный",
+        Action::ImpudentStudent => "Шибко наглый",
+        Action::SociableStudent => "Шибко общительный",
+        Action::GodMode => "GOD-режим",
+        Action::Study => "Готовиться",
+        Action::ViewTimetable => "Посмотреть расписание",
+        Action::Rest => "Отдыхать",
+        Action::GoToBed => "Лечь спать",
+        Action::GoFromPunkToDorm => "Пойти в общагу",
+        Action::GoFromDormToPunk => "Пойти на факультет",
+        Action::GoFromMausoleumToDorm => "Идти в общагу",
+        Action::RestByOurselvesInMausoleum => "Расслабляться будем своими силами.",
+        Action::NoRestIsNoGood => "Нет, отдыхать - это я зря сказал.",
+        Action::GoFromMausoleumToPunk => "Идти в ПУНК",
+        Action::GoToComputerClass => "Пойти в компьютерный класс",
+        Action::LeaveComputerClass => "Покинуть класс",
+        Action::GoToPDMI => "Поехать в ПОМИ",
+        Action::GoToMausoleum => "Пойти в мавзолей",
+        Action::GoToCafePUNK => "Сходить в кафе",
+        Action::SurfInternet => "Провести 1 час в Inet'е",
+        Action::PlayMMHEROES => "Поиграть в MMHEROES",
+        Action::GoToProfessor => "Идти к преподу",
+        Action::GoToWork => "Пойти в ТЕРКОМ, поработать",
+        Action::LookAtBaobab => "Посмотреть на баобаб",
+        Action::OrderCola => "Стакан колы за 4 р.",
+        Action::OrderSoup => "Суп, 6 р. все удовольствие",
+        Action::OrderBeer => "0,5 пива за 8 р.",
+        Action::IAmDone => {
+            return ("С меня хватит!", Color::BlueBright, action);
+        }
+        Action::NoIAmNotDone => "Нет, не хочу!",
+        Action::IAmCertainlyDone => "Я же сказал: с меня хватит!",
+        Action::WantToTryAgain => "ДА!!! ДА!!! ДА!!!",
+        Action::DontWantToTryAgain => "Нет... Нет... Не-э-эт...",
+        Action::WhatToDo => {
+            return ("ЧТО ДЕЛАТЬ ???", Color::BlueBright, action);
+        }
+        Action::WhatToDoAtAll => " А что вообще делать? ",
+        Action::AboutScreen => " Об экране            ",
+        Action::WhereToGoAndWhy => " Куда и зачем ходить? ",
+        Action::AboutProfessors => " О преподавателях     ",
+        Action::AboutCharacters => " О персонажах         ",
+        Action::AboutThisProgram => " Об этой программе    ",
+        Action::ThanksButNothing => " Спасибо, ничего      ",
+        Action::AnyKey => panic!("Action {:?} cannot be used in a dialog", action),
+    };
+    (option_name, Color::CyanBright, action)
+}
+
+pub(in crate::ui) fn dialog_options_for_actions(
+    actions: &[Action],
+) -> tiny_vec_ty![DialogOption; 16] {
+    actions
+        .iter()
+        .cloned()
+        .map(dialog_option_for_action)
+        .collect()
 }

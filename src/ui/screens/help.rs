@@ -1,6 +1,10 @@
+use crate::logic::Action;
 use crate::ui::{renderer::Renderer, *};
 
-pub(in crate::ui) fn display_what_to_do(r: &mut Renderer) -> WaitingState {
+pub(in crate::ui) fn display_what_to_do(
+    r: &mut Renderer,
+    available_actions: &[Action],
+) -> WaitingState {
     write_colored!(White, r, "Есть всего ");
     write_colored!(YellowBright, r, "6 дней");
     write_colored!(White, r, ". За это время надо успеть получить ");
@@ -48,10 +52,13 @@ pub(in crate::ui) fn display_what_to_do(r: &mut Renderer) -> WaitingState {
     );
     writeln_colored!(White, r, ".");
 
-    help_dialog(r)
+    help_dialog(r, available_actions)
 }
 
-pub(in crate::ui) fn display_about_screen(r: &mut Renderer) -> WaitingState {
+pub(in crate::ui) fn display_about_screen(
+    r: &mut Renderer,
+    available_actions: &[Action],
+) -> WaitingState {
     write_colored!(White, r, "В левом верхнем углу - игровые ");
     write_colored!(YellowBright, r, "дата");
     write_colored!(White, r, " и ");
@@ -108,10 +115,13 @@ pub(in crate::ui) fn display_about_screen(r: &mut Renderer) -> WaitingState {
     write_colored!(CyanBright, r, " МЕНЮ          ");
     writeln_colored!(RedBright, r, "РАСПИСАНИЕ");
 
-    help_dialog(r)
+    help_dialog(r, available_actions)
 }
 
-pub(in crate::ui) fn display_where_to_go_and_why(r: &mut Renderer) -> WaitingState {
+pub(in crate::ui) fn display_where_to_go_and_why(
+    r: &mut Renderer,
+    available_actions: &[Action],
+) -> WaitingState {
     write_colored!(White, r, "В ");
     write_colored!(YellowBright, r, "общаге");
     writeln_colored!(White, r, " ты готовишься и отдыхаешь.");
@@ -158,10 +168,13 @@ pub(in crate::ui) fn display_where_to_go_and_why(r: &mut Renderer) -> WaitingSta
     write_colored!(RedBright, r, "поездка отнимает и здоровье тоже");
     writeln_colored!(White, r, ".");
 
-    help_dialog(r)
+    help_dialog(r, available_actions)
 }
 
-pub(in crate::ui) fn display_about_professors(r: &mut Renderer) -> WaitingState {
+pub(in crate::ui) fn display_about_professors(
+    r: &mut Renderer,
+    available_actions: &[Action],
+) -> WaitingState {
     write_colored!(YellowBright, r, "Всемирнов М.А., алгебра");
     writeln_colored!(White, r, " - очень серьезный и весьма строгий.");
 
@@ -180,10 +193,13 @@ pub(in crate::ui) fn display_about_professors(r: &mut Renderer) -> WaitingState 
     write_colored!(YellowBright, r, "Альбинский Е.Г., Физ-ра");
     writeln_colored!(White, r, " - без проблем, но от физ-ры сильно устаешь.");
 
-    help_dialog(r)
+    help_dialog(r, available_actions)
 }
 
-pub(in crate::ui) fn display_about_characters(r: &mut Renderer) -> WaitingState {
+pub(in crate::ui) fn display_about_characters(
+    r: &mut Renderer,
+    available_actions: &[Action],
+) -> WaitingState {
     write_colored!(YellowBright, r, "Diamond");
     writeln_colored!(
         White,
@@ -256,10 +272,13 @@ pub(in crate::ui) fn display_about_characters(r: &mut Renderer) -> WaitingState 
     write_colored!(YellowBright, r, "DJuG");
     writeln_colored!(White, r, " - угадайте, кто ;)");
 
-    help_dialog(r)
+    help_dialog(r, available_actions)
 }
 
-pub(in crate::ui) fn display_about_this_program(r: &mut Renderer) -> WaitingState {
+pub(in crate::ui) fn display_about_this_program(
+    r: &mut Renderer,
+    available_actions: &[Action],
+) -> WaitingState {
     writeln_colored!(WhiteBright, r, "CrWMM Development Team:");
     writeln!(r);
 
@@ -298,22 +317,11 @@ pub(in crate::ui) fn display_about_this_program(r: &mut Renderer) -> WaitingStat
     writeln_colored!(Green, r, "           mmheroes z#11");
     writeln_colored!(CyanBright, r, "Появится менюшка, в которой все и так ясно.");
 
-    help_dialog(r)
+    help_dialog(r, available_actions)
 }
 
-fn help_dialog(r: &mut Renderer) -> WaitingState {
+fn help_dialog(r: &mut Renderer, available_actions: &[Action]) -> WaitingState {
     r.move_cursor_to(13, 0);
-    writeln_colored!(White, r, "Что тебя интересует");
-
-    let options = tiny_vec!(capacity: 16, [
-        (" А что вообще делать? ", Color::CyanBright, Action::WhatToDo),
-        (" Об экране            ", Color::CyanBright, Action::AboutScreen),
-        (" Куда и зачем ходить? ", Color::CyanBright, Action::WhereToGoAndWhy),
-        (" О преподавателях     ", Color::CyanBright, Action::AboutProfessors),
-        (" О персонажах         ", Color::CyanBright, Action::AboutCharacters),
-        (" Об этой программе    ", Color::CyanBright, Action::AboutThisProgram),
-        (" Спасибо, ничего      ", Color::CyanBright, Action::GoBack),
-    ]);
-
-    dialog(r, options)
+    writeln_colored!(White, r, "Что тебя интересует?");
+    dialog(r, dialog_options_for_actions(available_actions))
 }

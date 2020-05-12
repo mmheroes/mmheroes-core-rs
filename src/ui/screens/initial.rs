@@ -55,6 +55,7 @@ pub(in crate::ui) fn display_intro(r: &mut Renderer) -> WaitingState {
 
 pub(in crate::ui) fn display_initial_parameters(
     r: &mut Renderer,
+    available_actions: &[Action],
     mode: GameMode,
 ) -> WaitingState {
     debug_assert!(mode == GameMode::God || mode == GameMode::SelectInitialParameters);
@@ -62,18 +63,7 @@ pub(in crate::ui) fn display_initial_parameters(
     writeln!(r, "Выбери начальные параметры своего \"героя\":");
     writeln!(r);
 
-    let mut options = tiny_vec!(capacity: 16, [
-        ("Случайный студент", Color::CyanBright, Action::RandomStudent),
-        ("Шибко умный", Color::CyanBright, Action::CleverStudent),
-        ("Шибко наглый", Color::CyanBright, Action::ImpudentStudent),
-        ("Шибко общительный", Color::CyanBright, Action::SociableStudent),
-    ]);
-
-    if mode == GameMode::God {
-        options.push(("GOD-режим", Color::CyanBright, Action::GodMode))
-    }
-
-    dialog(r, options)
+    dialog(r, dialog_options_for_actions(available_actions))
 }
 
 pub(in crate::ui) fn display_ding(r: &mut Renderer) -> WaitingState {

@@ -1,17 +1,14 @@
-use crate::logic::{CauseOfDeath, GameState};
+use crate::logic::{Action, CauseOfDeath, GameState};
 use crate::ui::{renderer::Renderer, *};
 
-pub(in crate::ui) fn display_i_am_done(r: &mut Renderer) -> WaitingState {
+pub(in crate::ui) fn display_i_am_done(
+    r: &mut Renderer,
+    available_actions: &[Action],
+) -> WaitingState {
     writeln_colored!(White, r, "Ну, может не надо так резко...");
     writeln_colored!(White, r, "Ты что, серьезно хочешь закончить игру?");
     writeln!(r);
-
-    let options = tiny_vec!(capacity: 16, [
-        ("Нет, не хочу!", Color::CyanBright, Action::No),
-        ("Я же сказал: с меня хватит!", Color::CyanBright, Action::Yes),
-    ]);
-
-    dialog(r, options)
+    dialog(r, dialog_options_for_actions(available_actions))
 }
 
 fn display_game_end_dead(r: &mut Renderer, cause: CauseOfDeath) -> WaitingState {
@@ -85,17 +82,15 @@ pub(in crate::ui) fn display_game_end(
     }
 }
 
-pub(in crate::ui) fn display_wanna_try_again(r: &mut Renderer) -> WaitingState {
+pub(in crate::ui) fn display_wanna_try_again(
+    r: &mut Renderer,
+    available_actions: &[Action],
+) -> WaitingState {
     writeln_colored!(White, r, "Хочешь попробовать еще?");
     writeln!(r);
     writeln!(r);
 
-    let options = tiny_vec!(capacity: 16, [
-        ("ДА!!! ДА!!! ДА!!!", Color::CyanBright, Action::Yes),
-        ("Нет... Нет... Не-э-эт...", Color::CyanBright, Action::No),
-    ]);
-
-    dialog(r, options)
+    dialog(r, dialog_options_for_actions(available_actions))
 }
 
 pub(in crate::ui) fn display_disclaimer(r: &mut Renderer) -> WaitingState {

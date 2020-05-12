@@ -67,10 +67,7 @@ pub(in crate::ui) fn display_kolya_interaction(
     today_timetable(r);
     r.move_cursor_to(14, 0);
 
-    let prompt_options = tiny_vec!(capacity: 16, [
-        ("Да", Color::CyanBright, Action::Yes),
-        ("Нет", Color::CyanBright, Action::No),
-    ]);
+    let prompt_options = dialog_options_for_actions(&[Action::Yes, Action::No]);
 
     if interaction == PromptOatTincture {
         return dialog(r, prompt_options);
