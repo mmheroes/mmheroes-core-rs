@@ -665,11 +665,13 @@ impl Game {
                 match interaction {
                     npc::KolyaInteraction::SolvedAlgebraProblemsForFree => {
                         algebra_status.problems_done += 2;
+                        return self.hour_pass(state);
                     }
                     npc::KolyaInteraction::PromptOatTincture => unreachable!(),
                     npc::KolyaInteraction::SolvedAlgebraProblemsForOatTincture => {
                         algebra_status.problems_done += 2;
                         player.money -= Money::oat_tincture_cost();
+                        return self.hour_pass(state);
                     }
                     npc::KolyaInteraction::BrakeFluidNoMoney => {
                         player.brain -= 1;
