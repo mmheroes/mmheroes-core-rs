@@ -845,18 +845,13 @@ impl Game {
                 )
             }
             Action::GoToPDMI => todo!(),
-            Action::GoFromPunkToDorm => {
+            Action::GoFromMausoleumToDorm => {
                 state.location = Location::Dorm;
                 self.scene_router(state)
             }
             Action::Rest => {
                 let money = state.player.money;
                 self.screen = GameScreen::RestInMausoleum(state);
-                // - (Стакан колы за 4 р.)?
-                // - (Суп, 6 р. все удовольствие)?
-                // - (0,5 пива за 8 р.)?
-                // - Расслабляться будем своими силами.
-                // - Нет, отдыхать - это я зря сказал.
                 let mut available_actions = tiny_vec!(capacity: 16);
                 if money >= Money::cola_cost() {
                     available_actions.push(Action::OrderCola);
