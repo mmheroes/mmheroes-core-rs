@@ -10,7 +10,7 @@ impl Rng {
         Rng { state: seed }
     }
 
-    pub(crate) fn next(&mut self) -> u64 {
+    fn next(&mut self) -> u64 {
         // http://xoshiro.di.unimi.it/splitmix64.c
         self.state = self.state.wrapping_add(0x9e3779b97f4a7c15);
         let mut z = self.state;
@@ -19,9 +19,7 @@ impl Rng {
         z ^ z.wrapping_shr(31)
     }
 
-    pub(crate) fn random_number_with_upper_bound<
-        B: TryFrom<u64> + TryInto<u64> + Copy,
-    >(
+    pub(crate) fn random<B: TryFrom<u64> + TryInto<u64> + Copy>(
         &mut self,
         upper_bound: B,
     ) -> B {
@@ -43,7 +41,7 @@ impl Rng {
         }
     }
 
-    pub(crate) fn random_number_in_range<
+    pub(crate) fn random_in_range<
         B: TryInto<u64> + TryFrom<u64> + Copy,
         R: RangeBounds<B>,
     >(
@@ -82,23 +80,20 @@ impl Rng {
             }
         };
         start
-            .wrapping_add(self.random_number_with_upper_bound(delta))
+            .wrapping_add(self.random(delta))
             .try_into()
             .unwrap_or_else(|_| panic!())
     }
 
     pub(crate) fn random_element<'a, T>(&mut self, slice: &'a [T]) -> &'a T {
-        &slice[self.random_number_with_upper_bound(slice.len() as u64) as usize]
+        &slice[self.random(slice.len() as u64) as usize]
     }
 
     pub(crate) fn roll_dice<B: TryFrom<u64> + TryInto<u64> + Copy>(
         &mut self,
         sides: B,
     ) -> bool {
-        self.random_number_with_upper_bound(sides)
-            .try_into()
-            .unwrap_or_else(|_| panic!())
-            == 0u64
+        self.random(sides).try_into().unwrap_or_else(|_| panic!()) == 0u64
     }
 }
 
@@ -137,116 +132,116 @@ mod tests {
     fn test_random_number_with_upper_bound() {
         let mut rng = Rng::new(0);
 
-        assert_eq!(rng.random_number_with_upper_bound(3), 1);
-        assert_eq!(rng.random_number_with_upper_bound(3), 0);
-        assert_eq!(rng.random_number_with_upper_bound(3), 1);
-        assert_eq!(rng.random_number_with_upper_bound(3), 1);
-        assert_eq!(rng.random_number_with_upper_bound(3), 1);
-        assert_eq!(rng.random_number_with_upper_bound(3), 0);
-        assert_eq!(rng.random_number_with_upper_bound(3), 2);
-        assert_eq!(rng.random_number_with_upper_bound(3), 2);
-        assert_eq!(rng.random_number_with_upper_bound(3), 2);
-        assert_eq!(rng.random_number_with_upper_bound(3), 2);
+        assert_eq!(rng.random(3), 1);
+        assert_eq!(rng.random(3), 0);
+        assert_eq!(rng.random(3), 1);
+        assert_eq!(rng.random(3), 1);
+        assert_eq!(rng.random(3), 1);
+        assert_eq!(rng.random(3), 0);
+        assert_eq!(rng.random(3), 2);
+        assert_eq!(rng.random(3), 2);
+        assert_eq!(rng.random(3), 2);
+        assert_eq!(rng.random(3), 2);
 
-        assert_eq!(rng.random_number_with_upper_bound(10), 1);
-        assert_eq!(rng.random_number_with_upper_bound(10), 6);
-        assert_eq!(rng.random_number_with_upper_bound(10), 3);
-        assert_eq!(rng.random_number_with_upper_bound(10), 1);
-        assert_eq!(rng.random_number_with_upper_bound(10), 7);
-        assert_eq!(rng.random_number_with_upper_bound(10), 7);
-        assert_eq!(rng.random_number_with_upper_bound(10), 5);
-        assert_eq!(rng.random_number_with_upper_bound(10), 2);
-        assert_eq!(rng.random_number_with_upper_bound(10), 2);
-        assert_eq!(rng.random_number_with_upper_bound(10), 4);
+        assert_eq!(rng.random(10), 1);
+        assert_eq!(rng.random(10), 6);
+        assert_eq!(rng.random(10), 3);
+        assert_eq!(rng.random(10), 1);
+        assert_eq!(rng.random(10), 7);
+        assert_eq!(rng.random(10), 7);
+        assert_eq!(rng.random(10), 5);
+        assert_eq!(rng.random(10), 2);
+        assert_eq!(rng.random(10), 2);
+        assert_eq!(rng.random(10), 4);
 
-        assert_eq!(rng.random_number_with_upper_bound(1), 0);
-        assert_eq!(rng.random_number_with_upper_bound(1), 0);
-        assert_eq!(rng.random_number_with_upper_bound(1), 0);
-        assert_eq!(rng.random_number_with_upper_bound(1), 0);
-        assert_eq!(rng.random_number_with_upper_bound(1), 0);
-        assert_eq!(rng.random_number_with_upper_bound(1), 0);
-        assert_eq!(rng.random_number_with_upper_bound(1), 0);
-        assert_eq!(rng.random_number_with_upper_bound(1), 0);
+        assert_eq!(rng.random(1), 0);
+        assert_eq!(rng.random(1), 0);
+        assert_eq!(rng.random(1), 0);
+        assert_eq!(rng.random(1), 0);
+        assert_eq!(rng.random(1), 0);
+        assert_eq!(rng.random(1), 0);
+        assert_eq!(rng.random(1), 0);
+        assert_eq!(rng.random(1), 0);
 
-        assert_eq!(rng.random_number_with_upper_bound(2), 0);
-        assert_eq!(rng.random_number_with_upper_bound(2), 0);
-        assert_eq!(rng.random_number_with_upper_bound(2), 1);
-        assert_eq!(rng.random_number_with_upper_bound(2), 1);
-        assert_eq!(rng.random_number_with_upper_bound(2), 0);
-        assert_eq!(rng.random_number_with_upper_bound(2), 1);
-        assert_eq!(rng.random_number_with_upper_bound(2), 1);
-        assert_eq!(rng.random_number_with_upper_bound(2), 1);
-        assert_eq!(rng.random_number_with_upper_bound(2), 1);
-        assert_eq!(rng.random_number_with_upper_bound(2), 1);
-        assert_eq!(rng.random_number_with_upper_bound(2), 1);
-        assert_eq!(rng.random_number_with_upper_bound(2), 1);
-        assert_eq!(rng.random_number_with_upper_bound(2), 0);
-        assert_eq!(rng.random_number_with_upper_bound(2), 0);
-        assert_eq!(rng.random_number_with_upper_bound(2), 0);
-        assert_eq!(rng.random_number_with_upper_bound(2), 1);
-        assert_eq!(rng.random_number_with_upper_bound(2), 0);
-        assert_eq!(rng.random_number_with_upper_bound(2), 1);
-        assert_eq!(rng.random_number_with_upper_bound(2), 1);
-        assert_eq!(rng.random_number_with_upper_bound(2), 1);
-        assert_eq!(rng.random_number_with_upper_bound(2), 1);
-        assert_eq!(rng.random_number_with_upper_bound(2), 0);
-        assert_eq!(rng.random_number_with_upper_bound(2), 1);
-        assert_eq!(rng.random_number_with_upper_bound(2), 0);
+        assert_eq!(rng.random(2), 0);
+        assert_eq!(rng.random(2), 0);
+        assert_eq!(rng.random(2), 1);
+        assert_eq!(rng.random(2), 1);
+        assert_eq!(rng.random(2), 0);
+        assert_eq!(rng.random(2), 1);
+        assert_eq!(rng.random(2), 1);
+        assert_eq!(rng.random(2), 1);
+        assert_eq!(rng.random(2), 1);
+        assert_eq!(rng.random(2), 1);
+        assert_eq!(rng.random(2), 1);
+        assert_eq!(rng.random(2), 1);
+        assert_eq!(rng.random(2), 0);
+        assert_eq!(rng.random(2), 0);
+        assert_eq!(rng.random(2), 0);
+        assert_eq!(rng.random(2), 1);
+        assert_eq!(rng.random(2), 0);
+        assert_eq!(rng.random(2), 1);
+        assert_eq!(rng.random(2), 1);
+        assert_eq!(rng.random(2), 1);
+        assert_eq!(rng.random(2), 1);
+        assert_eq!(rng.random(2), 0);
+        assert_eq!(rng.random(2), 1);
+        assert_eq!(rng.random(2), 0);
     }
 
     #[test]
     #[should_panic]
     fn test_random_number_with_zero_upper_bound() {
         let mut rng = Rng::new(123);
-        assert_eq!(rng.random_number_with_upper_bound(0), 0);
+        assert_eq!(rng.random(0), 0);
     }
 
     #[test]
     fn test_random_number_in_range() {
         let mut rng = Rng::new(11419);
 
-        assert_eq!(rng.random_number_in_range(15..20), 16);
-        assert_eq!(rng.random_number_in_range(15..20), 15);
-        assert_eq!(rng.random_number_in_range(15..20), 19);
-        assert_eq!(rng.random_number_in_range(15..20), 19);
-        assert_eq!(rng.random_number_in_range(15..20), 17);
-        assert_eq!(rng.random_number_in_range(15..20), 16);
-        assert_eq!(rng.random_number_in_range(15..20), 18);
-        assert_eq!(rng.random_number_in_range(15..20), 17);
-        assert_eq!(rng.random_number_in_range(15..20), 15);
-        assert_eq!(rng.random_number_in_range(15..20), 15);
+        assert_eq!(rng.random_in_range(15..20), 16);
+        assert_eq!(rng.random_in_range(15..20), 15);
+        assert_eq!(rng.random_in_range(15..20), 19);
+        assert_eq!(rng.random_in_range(15..20), 19);
+        assert_eq!(rng.random_in_range(15..20), 17);
+        assert_eq!(rng.random_in_range(15..20), 16);
+        assert_eq!(rng.random_in_range(15..20), 18);
+        assert_eq!(rng.random_in_range(15..20), 17);
+        assert_eq!(rng.random_in_range(15..20), 15);
+        assert_eq!(rng.random_in_range(15..20), 15);
 
-        assert_eq!(rng.random_number_in_range(100000..100002), 100000);
-        assert_eq!(rng.random_number_in_range(100000..100002), 100000);
-        assert_eq!(rng.random_number_in_range(100000..100002), 100000);
-        assert_eq!(rng.random_number_in_range(100000..100002), 100001);
-        assert_eq!(rng.random_number_in_range(100000..100002), 100000);
-        assert_eq!(rng.random_number_in_range(100000..100002), 100001);
-        assert_eq!(rng.random_number_in_range(100000..100002), 100000);
-        assert_eq!(rng.random_number_in_range(100000..100002), 100000);
-        assert_eq!(rng.random_number_in_range(100000..100002), 100001);
-        assert_eq!(rng.random_number_in_range(100000..100002), 100001);
+        assert_eq!(rng.random_in_range(100000..100002), 100000);
+        assert_eq!(rng.random_in_range(100000..100002), 100000);
+        assert_eq!(rng.random_in_range(100000..100002), 100000);
+        assert_eq!(rng.random_in_range(100000..100002), 100001);
+        assert_eq!(rng.random_in_range(100000..100002), 100000);
+        assert_eq!(rng.random_in_range(100000..100002), 100001);
+        assert_eq!(rng.random_in_range(100000..100002), 100000);
+        assert_eq!(rng.random_in_range(100000..100002), 100000);
+        assert_eq!(rng.random_in_range(100000..100002), 100001);
+        assert_eq!(rng.random_in_range(100000..100002), 100001);
 
         // Corner cases
         assert_eq!(
-            rng.random_number_in_range(0..u64::max_value()),
+            rng.random_in_range(0..u64::max_value()),
             5031045625461185416
         );
         assert_eq!(
-            rng.random_number_in_range(0..=u64::max_value()),
+            rng.random_in_range(0..=u64::max_value()),
             3257556776996564209
         );
 
         assert_eq!(
-            rng.random_number_in_range((u64::max_value() - 1)..=u64::max_value()),
+            rng.random_in_range((u64::max_value() - 1)..=u64::max_value()),
             18446744073709551615
         );
         assert_eq!(
-            rng.random_number_in_range((u64::max_value() - 1)..=u64::max_value()),
+            rng.random_in_range((u64::max_value() - 1)..=u64::max_value()),
             18446744073709551614
         );
         assert_eq!(
-            rng.random_number_in_range((u64::max_value() - 1)..=u64::max_value()),
+            rng.random_in_range((u64::max_value() - 1)..=u64::max_value()),
             18446744073709551614
         );
     }

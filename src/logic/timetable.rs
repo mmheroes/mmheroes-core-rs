@@ -170,7 +170,7 @@ impl Timetable {
             let mut day_used = [false; NUM_DAYS];
             for _ in 0..subject_info.exam_days {
                 let day_idx = loop {
-                    let day = rng.random_number_in_range(0..NUM_DAYS) as usize;
+                    let day = rng.random_in_range(0..NUM_DAYS) as usize;
                     if !day_used[day] {
                         day_used[day] = true;
                         break day;
@@ -179,9 +179,8 @@ impl Timetable {
 
                 let exam_ends_max = WORKDAY_ENDS - subject_info.exam_max_duration;
 
-                let exam_start_time =
-                    rng.random_number_in_range(WORKDAY_BEGINS..=exam_ends_max);
-                let exam_duration = rng.random_number_in_range(
+                let exam_start_time = rng.random_in_range(WORKDAY_BEGINS..=exam_ends_max);
+                let exam_duration = rng.random_in_range(
                     subject_info.exam_min_duration..=subject_info.exam_max_duration,
                 );
 

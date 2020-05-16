@@ -264,4 +264,10 @@ impl Location {
             .exam(subject)
             .map_or(false, |exam| exam.location() == self)
     }
+
+    pub fn is_exam_here_now(self, subject: Subject, today: &Day, time: Time) -> bool {
+        today.exam(subject).map_or(false, |exam| {
+            exam.location() == self && time >= exam.from() && time < exam.to()
+        })
+    }
 }

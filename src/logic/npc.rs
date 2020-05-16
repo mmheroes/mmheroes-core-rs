@@ -95,7 +95,7 @@ impl ClassmateInfo {
                     for subject in subjects.iter().cloned() {
                         if current_location.is_exam_here_on_day(subject, today) {
                             at_least_one_exam_is_today = true;
-                            if rng.random_number_with_upper_bound(10) > 5 {
+                            if rng.random(10) > 5 {
                                 pasha_is_present_at_some_exam = true;
                                 self.current_location = ClassmateLocation::Exam(subject)
                             }
@@ -108,15 +108,53 @@ impl ClassmateInfo {
                 }
             }
             Diamond => { /* TODO */ }
-            RAI => { /* TODO */ }
+            RAI => {
+                self.current_location = if current_location.is_exam_here_now(
+                    Subject::AlgebraAndNumberTheory,
+                    today,
+                    time,
+                ) {
+                    ClassmateLocation::Exam(Subject::AlgebraAndNumberTheory)
+                } else if current_location.is_exam_here_now(
+                    Subject::Calculus,
+                    today,
+                    time,
+                ) {
+                    ClassmateLocation::Exam(Subject::Calculus)
+                } else if time.is_between_9_and_19() {
+                    ClassmateLocation::Location(Location::ComputerClass)
+                } else {
+                    ClassmateLocation::Nowhere
+                }
+            }
             Misha => { /* TODO */ }
             Serj => { /* TODO */ }
-            Sasha => { /* TODO */ }
+            Sasha => {
+                self.current_location = if time.is_between_9_and_19() && rng.roll_dice(4)
+                {
+                    ClassmateLocation::Location(Location::PUNK)
+                } else {
+                    ClassmateLocation::Nowhere
+                }
+            }
             NiL => { /* TODO */ }
-            Kuzmenko => { /* TODO */ }
+            Kuzmenko => {
+                self.current_location = if time.is_between_9_and_19() && rng.roll_dice(4)
+                {
+                    ClassmateLocation::Location(Location::ComputerClass)
+                } else {
+                    ClassmateLocation::Nowhere
+                }
+            }
             DJuG => { /* TODO */ }
             Andrew => { /* TODO */ }
-            Grisha => { /* TODO */ }
+            Grisha => {
+                self.current_location = if rng.roll_dice(3) {
+                    ClassmateLocation::Location(Location::Mausoleum)
+                } else {
+                    ClassmateLocation::Nowhere
+                }
+            }
         }
     }
 }
@@ -259,4 +297,65 @@ pub enum PashaInteraction {
 
     /// "Паша воодушевляет тебя на великие дела."
     Inspiration,
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum GrishaInteraction {
+    /// "А ты не хочешь устроиться в ТЕРКОМ? Может, кое-чего подзаработаешь..."
+    /// (да или нет)
+    PromptEmploymentAtTerkom,
+
+    /// "Поздравляю, теперь ты можешь идти в "контору"!"
+    CongratulationsYouAreNowEmployed,
+
+    /// "Как хочешь. Только смотри, не заучись там ..."
+    AsYouWantButDontOverstudy,
+
+    /// "Кстати, я тут знаю один качественно работающий прокси-сервер..."
+    ProxyAddress,
+
+    /// "Хочу халявы!"
+    WantFreebie { drink_beer: bool, hour_pass: bool },
+
+    /// "Прийди же, о халява!"
+    FreebieComeToMe { drink_beer: bool, hour_pass: bool },
+
+    /// "Халява есть - ее не может не быть."
+    FreebieExists { drink_beer: bool, hour_pass: bool },
+
+    /// "Давай организуем клуб любетелей халявы!"
+    LetsOrganizeFreebieLoversClub { drink_beer: bool, hour_pass: bool },
+
+    /// "Чтобы получить диплом, учиться совершенно необязательно!"
+    NoNeedToStudyToGetDiploma { drink_beer: bool, hour_pass: bool },
+
+    /// "Ну вот, ты готовился... Помогло это тебе?"
+    YouStudiedDidItHelp { drink_beer: bool, hour_pass: bool },
+
+    /// "На третьем курсе на лекции уже никто не ходит. Почти никто."
+    ThirdYearStudentsDontAttendLectures { drink_beer: bool, hour_pass: bool },
+
+    /// "Вот, бери пример с Коли."
+    TakeExampleFromKolya { drink_beer: bool, hour_pass: bool },
+
+    /// "Ненавижу Льва Толстого! Вчера "Войну и мир" <йк> ксерил..."
+    HateLevTolstoy { drink_beer: bool, hour_pass: bool },
+
+    /// "А в ПОМИ лучше вообще не ездить!"
+    DontGoToPDMI { drink_beer: bool, hour_pass: bool },
+
+    /// "Имена главных халявчиков и алкоголиков висят на баобабе."
+    NamesOfFreebieLovers { drink_beer: bool, hour_pass: bool },
+
+    /// "Правильно, лучше посидим здесь и оттянемся!"
+    LetsHaveABreakHere { drink_beer: bool, hour_pass: bool },
+
+    /// "Конспектировать ничего не надо. В мире есть ксероксы!"
+    NoNeedToTakeLectureNotes { drink_beer: bool, hour_pass: bool },
+
+    /// "А с четвертого курса вылететь уже почти невозможно."
+    CantBeExpelledInFourthYear { drink_beer: bool, hour_pass: bool },
+
+    /// "Вот у механиков - у них халява!"
+    MechanicsHaveFreebie { drink_beer: bool, hour_pass: bool },
 }

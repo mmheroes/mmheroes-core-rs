@@ -39,6 +39,8 @@ pub enum Action {
     GoFromMausoleumToPunk,
     RestByOurselvesInMausoleum,
     NoRestIsNoGood,
+    AcceptEmploymentAtTerkom,
+    DeclineEmploymentAtTerkom,
     GoToComputerClass,
     LeaveComputerClass,
     GoToPDMI,
@@ -178,6 +180,9 @@ pub enum GameScreen {
     /// Взаимодействие с Пашей.
     PashaInteraction(GameState, npc::PashaInteraction),
 
+    /// Взаимодействие с Гришей.
+    GrishaInteraction(GameState, npc::GrishaInteraction),
+
     /// Экран "ты серьёзно хочешь закончить игру?"
     IAmDone(GameState),
 
@@ -281,6 +286,7 @@ impl Game {
             | AboutThisProgram(state)
             | KolyaInteraction(state, _)
             | PashaInteraction(state, _)
+            | GrishaInteraction(state, _)
             | RestInMausoleum(state) => Some(state),
             Intro | InitialParameters | Ding(_) | WannaTryAgain | Disclaimer
             | Terminal => None,
@@ -337,6 +343,11 @@ impl Game {
                 let state = state.clone();
                 let interaction = *interaction;
                 self.proceed_with_pasha(state, action, interaction)
+            }
+            GrishaInteraction(state, interaction) => {
+                let state = state.clone();
+                let interaction = *interaction;
+                self.proceed_with_grisha(state, action, interaction)
             }
             IAmDone(state) => {
                 let state = state.clone();
@@ -405,27 +416,27 @@ impl Game {
         let (god_mode, brain, stamina, charisma) = match parameters {
             Action::RandomStudent => (
                 false,
-                BrainLevel(self.rng.random_number_in_range(4..7)),
-                StaminaLevel(self.rng.random_number_in_range(4..7)),
-                CharismaLevel(self.rng.random_number_in_range(4..7)),
+                BrainLevel(self.rng.random_in_range(4..7)),
+                StaminaLevel(self.rng.random_in_range(4..7)),
+                CharismaLevel(self.rng.random_in_range(4..7)),
             ),
             Action::CleverStudent => (
                 false,
-                BrainLevel(self.rng.random_number_in_range(5..10)),
-                StaminaLevel(self.rng.random_number_in_range(2..5)),
-                CharismaLevel(self.rng.random_number_in_range(2..5)),
+                BrainLevel(self.rng.random_in_range(5..10)),
+                StaminaLevel(self.rng.random_in_range(2..5)),
+                CharismaLevel(self.rng.random_in_range(2..5)),
             ),
             Action::ImpudentStudent => (
                 false,
-                BrainLevel(self.rng.random_number_in_range(2..5)),
-                StaminaLevel(self.rng.random_number_in_range(5..10)),
-                CharismaLevel(self.rng.random_number_in_range(2..5)),
+                BrainLevel(self.rng.random_in_range(2..5)),
+                StaminaLevel(self.rng.random_in_range(5..10)),
+                CharismaLevel(self.rng.random_in_range(2..5)),
             ),
             Action::SociableStudent => (
                 false,
-                BrainLevel(self.rng.random_number_in_range(2..5)),
-                StaminaLevel(self.rng.random_number_in_range(2..5)),
-                CharismaLevel(self.rng.random_number_in_range(5..10)),
+                BrainLevel(self.rng.random_in_range(2..5)),
+                StaminaLevel(self.rng.random_in_range(2..5)),
+                CharismaLevel(self.rng.random_in_range(5..10)),
             ),
             Action::GodMode => {
                 (true, BrainLevel(30), StaminaLevel(30), CharismaLevel(30))
@@ -433,11 +444,10 @@ impl Game {
             _ => illegal_action!(parameters),
         };
 
-        let health =
-            HealthLevel(self.rng.random_number_with_upper_bound(stamina.0 * 2) + 40);
+        let health = HealthLevel(self.rng.random(stamina.0 * 2) + 40);
 
         Player::new(god_mode, health, brain, stamina, charisma, |_| {
-            self.rng.random_number_with_upper_bound(brain)
+            self.rng.random(brain)
         })
     }
 
@@ -576,18 +586,20 @@ impl Game {
         assert_eq!(action, Action::AnyKey);
         assert_eq!(state.location, Location::PUNK);
         assert!(matches!(self.screen, GameScreen::PashaInteraction(_, _)));
+        let player = &mut state.player;
         match interaction {
             npc::PashaInteraction::Stipend => {
-                state.player.got_stipend = true;
-                state.player.money += Money::stipend();
+                assert!(!player.got_stipend);
+                player.got_stipend = true;
+                player.money += Money::stipend();
             }
             npc::PashaInteraction::Inspiration => {
-                state.player.stamina += 1;
+                player.stamina += 1;
                 for (subject, _) in SUBJECTS.iter() {
                     let knowledge =
-                        &mut state.player.status_for_subject_mut(*subject).knowledge;
+                        &mut player.status_for_subject_mut(*subject).knowledge;
                     if *knowledge > BrainLevel(3) {
-                        *knowledge -= self.rng.random_number_with_upper_bound(3);
+                        *knowledge -= self.rng.random(3);
                     }
                 }
             }
@@ -678,8 +690,7 @@ impl Game {
         player: &mut Player,
     ) -> Option<tiny_vec_ty![Action; 16]> {
         use Subject::AlgebraAndNumberTheory;
-        let has_enough_charisma =
-            player.charisma > self.rng.random_number_with_upper_bound(CharismaLevel(10));
+        let has_enough_charisma = player.charisma > self.rng.random(CharismaLevel(10));
         let algebra = player.status_for_subject(AlgebraAndNumberTheory);
         let problems_done = algebra.problems_done;
         let required_problems = SUBJECTS[AlgebraAndNumberTheory].1.required_problems;
@@ -792,6 +803,208 @@ impl Game {
         }
     }
 
+    fn interact_with_grisha(&mut self, state: GameState) -> tiny_vec_ty![Action; 16] {
+        use npc::GrishaInteraction::*;
+        assert_eq!(state.location, Location::Mausoleum);
+        let player = &state.player;
+        let has_enough_charisma = player.charisma > self.rng.random(CharismaLevel(20));
+        let (actions, interaction) = if !player.is_employed_at_terkom
+            && has_enough_charisma
+        {
+            (
+                tiny_vec!(capacity: 16, [Action::AcceptEmploymentAtTerkom, Action::DeclineEmploymentAtTerkom]),
+                PromptEmploymentAtTerkom,
+            )
+        } else if !player.has_internet && has_enough_charisma {
+            (wait_for_any_key(), ProxyAddress)
+        } else {
+            let drink_beer = self.rng.random(3) > 0;
+            let hour_pass = self.rng.roll_dice(3);
+            let replies = [
+                WantFreebie {
+                    drink_beer,
+                    hour_pass,
+                },
+                FreebieComeToMe {
+                    drink_beer,
+                    hour_pass,
+                },
+                FreebieExists {
+                    drink_beer,
+                    hour_pass,
+                },
+                LetsOrganizeFreebieLoversClub {
+                    drink_beer,
+                    hour_pass,
+                },
+                NoNeedToStudyToGetDiploma {
+                    drink_beer,
+                    hour_pass,
+                },
+                YouStudiedDidItHelp {
+                    drink_beer,
+                    hour_pass,
+                },
+                ThirdYearStudentsDontAttendLectures {
+                    drink_beer,
+                    hour_pass,
+                },
+                TakeExampleFromKolya {
+                    drink_beer,
+                    hour_pass,
+                },
+                HateLevTolstoy {
+                    drink_beer,
+                    hour_pass,
+                },
+                DontGoToPDMI {
+                    drink_beer,
+                    hour_pass,
+                },
+                NamesOfFreebieLovers {
+                    drink_beer,
+                    hour_pass,
+                },
+                LetsHaveABreakHere {
+                    drink_beer,
+                    hour_pass,
+                },
+                NoNeedToTakeLectureNotes {
+                    drink_beer,
+                    hour_pass,
+                },
+                CantBeExpelledInFourthYear {
+                    drink_beer,
+                    hour_pass,
+                },
+                MechanicsHaveFreebie {
+                    drink_beer,
+                    hour_pass,
+                },
+            ];
+            (wait_for_any_key(), *self.rng.random_element(&replies[..]))
+        };
+        self.screen = GameScreen::GrishaInteraction(state, interaction);
+        actions
+    }
+
+    fn proceed_with_grisha(
+        &mut self,
+        mut state: GameState,
+        action: Action,
+        interaction: npc::GrishaInteraction,
+    ) -> tiny_vec_ty![Action; 16] {
+        use npc::GrishaInteraction::*;
+        assert!(matches!(self.screen, GameScreen::GrishaInteraction(_, _)));
+        let player = &mut state.player;
+        match action {
+            Action::AnyKey => match interaction {
+                PromptEmploymentAtTerkom => unreachable!(),
+                CongratulationsYouAreNowEmployed | AsYouWantButDontOverstudy => {
+                    self.scene_router(state)
+                }
+                ProxyAddress => {
+                    assert!(!player.has_internet);
+                    player.has_internet = true;
+                    self.scene_router(state)
+                }
+                WantFreebie {
+                    drink_beer,
+                    hour_pass,
+                }
+                | FreebieComeToMe {
+                    drink_beer,
+                    hour_pass,
+                }
+                | FreebieExists {
+                    drink_beer,
+                    hour_pass,
+                }
+                | LetsOrganizeFreebieLoversClub {
+                    drink_beer,
+                    hour_pass,
+                }
+                | NoNeedToStudyToGetDiploma {
+                    drink_beer,
+                    hour_pass,
+                }
+                | YouStudiedDidItHelp {
+                    drink_beer,
+                    hour_pass,
+                }
+                | ThirdYearStudentsDontAttendLectures {
+                    drink_beer,
+                    hour_pass,
+                }
+                | TakeExampleFromKolya {
+                    drink_beer,
+                    hour_pass,
+                }
+                | HateLevTolstoy {
+                    drink_beer,
+                    hour_pass,
+                }
+                | DontGoToPDMI {
+                    drink_beer,
+                    hour_pass,
+                }
+                | NamesOfFreebieLovers {
+                    drink_beer,
+                    hour_pass,
+                }
+                | LetsHaveABreakHere {
+                    drink_beer,
+                    hour_pass,
+                }
+                | NoNeedToTakeLectureNotes {
+                    drink_beer,
+                    hour_pass,
+                }
+                | CantBeExpelledInFourthYear {
+                    drink_beer,
+                    hour_pass,
+                }
+                | MechanicsHaveFreebie {
+                    drink_beer,
+                    hour_pass,
+                } => {
+                    if drink_beer {
+                        player.brain -= self.rng.random(2);
+                        if player.brain <= BrainLevel(0) {
+                            player.health = HealthLevel(0);
+                            player.cause_of_death = Some(CauseOfDeath::DrankTooMuchBeer);
+                            return self.game_end(state);
+                        }
+                        player.charisma += self.rng.random(2);
+                    }
+                    if hour_pass {
+                        return self.hour_pass(state);
+                    }
+
+                    self.scene_router(state)
+                }
+            },
+            Action::AcceptEmploymentAtTerkom => {
+                assert_eq!(interaction, PromptEmploymentAtTerkom);
+                assert!(!player.is_employed_at_terkom);
+                player.is_employed_at_terkom = true;
+                self.screen = GameScreen::GrishaInteraction(
+                    state,
+                    CongratulationsYouAreNowEmployed,
+                );
+                wait_for_any_key()
+            }
+            Action::DeclineEmploymentAtTerkom => {
+                assert_eq!(interaction, PromptEmploymentAtTerkom);
+                assert!(!player.is_employed_at_terkom);
+                self.screen =
+                    GameScreen::GrishaInteraction(state, AsYouWantButDontOverstudy);
+                wait_for_any_key()
+            }
+            _ => illegal_action!(action),
+        }
+    }
+
     fn handle_rest_in_mausoleum(
         &mut self,
         mut state: GameState,
@@ -802,14 +1015,12 @@ impl Game {
             Action::OrderCola => {
                 assert!(player.money >= Money::cola_cost());
                 player.money -= Money::cola_cost();
-                player.health +=
-                    self.rng.random_number_with_upper_bound(player.charisma.0) + 3;
+                player.health += self.rng.random(player.charisma.0) + 3;
             }
             Action::OrderSoup => {
                 assert!(player.money >= Money::soup_cost());
                 player.money -= Money::soup_cost();
-                player.health +=
-                    self.rng.random_number_with_upper_bound(player.charisma.0) + 5;
+                player.health += self.rng.random(player.charisma.0) + 5;
             }
             Action::OrderBeer => {
                 assert!(player.money >= Money::beer_cost());
@@ -823,8 +1034,7 @@ impl Game {
                 if self.rng.roll_dice(3) {
                     player.stamina += 2;
                 }
-                player.health +=
-                    self.rng.random_number_with_upper_bound(player.charisma.0);
+                player.health += self.rng.random(player.charisma.0);
                 if player.brain <= BrainLevel(0) {
                     player.health = HealthLevel(0);
                     player.cause_of_death = Some(CauseOfDeath::BeerAlcoholism);
@@ -832,8 +1042,7 @@ impl Game {
                 }
             }
             Action::RestByOurselvesInMausoleum => {
-                player.health +=
-                    self.rng.random_number_with_upper_bound(player.charisma.0);
+                player.health += self.rng.random(player.charisma.0);
             }
             Action::NoRestIsNoGood => return self.scene_router(state),
             _ => illegal_action!(action),
@@ -892,7 +1101,7 @@ impl Game {
                     state.classmates[Grisha].current_location(),
                     ClassmateLocation::Location(Location::Mausoleum)
                 ));
-                todo!()
+                self.interact_with_grisha(state)
             }
             Action::InteractWithClassmate(Serj) => {
                 assert!(matches!(
@@ -981,7 +1190,7 @@ impl Game {
     }
 
     fn rest_in_dorm(&mut self, mut state: GameState) -> tiny_vec_ty![Action; 16] {
-        state.player.health += self.rng.random_number_in_range(7..15);
+        state.player.health += self.rng.random_in_range(7..15);
         self.hour_pass(state)
     }
 

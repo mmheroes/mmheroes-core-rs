@@ -223,6 +223,13 @@ impl GameUI<'_> {
                     *interaction,
                 )
             }
+            GrishaInteraction(state, interaction) => {
+                screens::npc::display_grisha_interaction(
+                    &mut self.renderer,
+                    state,
+                    *interaction,
+                )
+            }
             IAmDone(_) => screens::game_end::display_i_am_done(
                 &mut self.renderer,
                 self.game.available_actions(),
@@ -452,6 +459,8 @@ fn dialog_option_for_action(action: Action) -> DialogOption {
         Action::OrderCola => "Стакан колы за 4 р.",
         Action::OrderSoup => "Суп, 6 р. все удовольствие",
         Action::OrderBeer => "0,5 пива за 8 р.",
+        Action::AcceptEmploymentAtTerkom => "Да, мне бы не помешало.",
+        Action::DeclineEmploymentAtTerkom => "Нет, я лучше поучусь уще чуток.",
         Action::IAmDone => {
             return ("С меня хватит!", Color::BlueBright, action);
         }
