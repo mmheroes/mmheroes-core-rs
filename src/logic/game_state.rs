@@ -5,7 +5,6 @@ pub struct GameState {
     pub(in crate::logic) player: Player,
     pub(in crate::logic) current_day_index: usize,
     pub(in crate::logic) current_time: Time,
-    pub(in crate::logic) failed_attempt_to_sleep: bool,
     pub(in crate::logic) timetable: timetable::Timetable,
     pub(in crate::logic) location: Location,
     pub(in crate::logic) classmates: Classmates,
@@ -21,7 +20,6 @@ impl GameState {
             player,
             current_day_index: 0,
             current_time: Time(8),
-            failed_attempt_to_sleep: false,
             timetable,
             location,
             classmates: Classmates::new(),
@@ -46,10 +44,6 @@ impl GameState {
 
     pub fn location(&self) -> Location {
         self.location
-    }
-
-    pub fn failed_attempt_to_sleep(&self) -> bool {
-        self.failed_attempt_to_sleep
     }
 
     pub fn classmates(&self) -> &Classmates {

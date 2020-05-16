@@ -23,7 +23,7 @@ pub enum Action {
     Yes,
     No,
     InteractWithClassmate(Classmate),
-    InteractWithProfessor(Subject),
+    Exam(Subject),
     RandomStudent,
     CleverStudent,
     ImpudentStudent,
@@ -183,6 +183,14 @@ pub enum GameScreen {
     /// Взаимодействие с Гришей.
     GrishaInteraction(GameState, npc::GrishaInteraction),
 
+    // TODO: Добавить больше параметров. Сейчас поддерживается только "не тянет поспать"
+    /// Сон.
+    Sleep(GameState),
+
+    /// Посидеть в интернете. Если второй аргумент `true`, это означает, что
+    /// герой нашёл в интернете решение задачи по информатике.
+    SurfInternet(GameState, bool),
+
     /// Экран "ты серьёзно хочешь закончить игру?"
     IAmDone(GameState),
 
@@ -275,6 +283,7 @@ impl Game {
         match &self.screen {
             Timetable(state)
             | SceneRouter(state)
+            | Sleep(state)
             | HighScores(state)
             | IAmDone(state)
             | GameEnd(state)
@@ -287,6 +296,7 @@ impl Game {
             | KolyaInteraction(state, _)
             | PashaInteraction(state, _)
             | GrishaInteraction(state, _)
+            | SurfInternet(state, _)
             | RestInMausoleum(state) => Some(state),
             Intro | InitialParameters | Ding(_) | WannaTryAgain | Disclaimer
             | Terminal => None,
@@ -323,6 +333,10 @@ impl Game {
                 let state = state.clone();
                 self.handle_scene_router_action(state, action)
             }
+            Sleep(state) => {
+                let state = state.clone();
+                self.handle_sleeping(state, action)
+            }
             HighScores(state) => match action {
                 Action::AnyKey => {
                     let state = state.clone();
@@ -348,6 +362,11 @@ impl Game {
                 let state = state.clone();
                 let interaction = *interaction;
                 self.proceed_with_grisha(state, action, interaction)
+            }
+            SurfInternet(state, found_program) => {
+                let state = state.clone();
+                let found_program = *found_program;
+                self.proceed_with_internet(state, action, found_program)
             }
             IAmDone(state) => {
                 let state = state.clone();
@@ -454,9 +473,7 @@ impl Game {
     fn scene_router(&mut self, state: GameState) -> tiny_vec_ty![Action; 16] {
         // TODO: assert that no exam is in progress
         let location = state.location;
-        self.screen = GameScreen::SceneRouter(state);
-        let state = self.game_state().unwrap();
-        match location {
+        let available_actions = match location {
             Location::PDMI => todo!(),
             Location::PUNK => {
                 let mut available_actions = tiny_vec!(capacity: 16, [
@@ -466,7 +483,7 @@ impl Game {
                     Action::GoToPDMI,
                     Action::GoToMausoleum,
                 ]);
-                if state.current_time.is_computer_class_open() {
+                if state.current_time < Time::computer_class_closing() {
                     available_actions.push(Action::GoToComputerClass);
                 }
                 if state.current_time.is_cafe_open() {
@@ -507,8 +524,38 @@ impl Game {
                 Action::IAmDone,
                 Action::WhatToDo,
             ]),
-            Location::ComputerClass => todo!(),
-        }
+            Location::ComputerClass => {
+                if state.current_time > Time::computer_class_closing() {
+                    todo!("Класс закрывается. Пошли домой!")
+                }
+                let mut available_actions = tiny_vec!(capacity: 16);
+                if location.is_exam_here_now(
+                    Subject::ComputerScience,
+                    state.current_day(),
+                    state.current_time,
+                ) {
+                    available_actions.push(Action::Exam(Subject::ComputerScience));
+                }
+                available_actions.push(Action::GoFromPunkToDorm);
+                available_actions.push(Action::LeaveComputerClass);
+                available_actions.push(Action::GoToPDMI);
+                available_actions.push(Action::GoToMausoleum);
+                if state.player.has_internet {
+                    available_actions.push(Action::SurfInternet);
+                }
+                if state.player.has_mmheroes_floppy {
+                    available_actions.push(Action::PlayMMHEROES);
+                }
+                for classmate_info in state.classmates.filter_by_location(location) {
+                    available_actions
+                        .push(Action::InteractWithClassmate(classmate_info.classmate()));
+                }
+                available_actions.push(Action::IAmDone);
+                available_actions
+            }
+        };
+        self.screen = GameScreen::SceneRouter(state);
+        available_actions
     }
 
     fn handle_scene_router_action(
@@ -519,10 +566,21 @@ impl Game {
         match state.location() {
             Location::PUNK => self.handle_punk_action(state, action),
             Location::PDMI => todo!(),
-            Location::ComputerClass => todo!(),
+            Location::ComputerClass => self.handle_computer_class_action(state, action),
             Location::Dorm => self.handle_dorm_action(state, action),
             Location::Mausoleum => self.handle_mausoleum_action(state, action),
         }
+    }
+
+    fn handle_sleeping(
+        &mut self,
+        state: GameState,
+        action: Action,
+    ) -> tiny_vec_ty![Action; 16] {
+        // TODO: Реализовать что-то помимо неудавшегося сна
+        assert!(matches!(self.screen, GameScreen::Sleep(_)));
+        assert_eq!(action, Action::AnyKey);
+        self.scene_router(state)
     }
 
     fn handle_dorm_action(
@@ -532,11 +590,6 @@ impl Game {
     ) -> tiny_vec_ty![Action; 16] {
         assert!(state.location == Location::Dorm);
         match action {
-            Action::AnyKey => {
-                assert!(state.failed_attempt_to_sleep);
-                state.failed_attempt_to_sleep = false;
-                self.scene_router(state)
-            }
             Action::Study => todo!("Study"),
             Action::ViewTimetable => self.view_timetable(state),
             Action::Rest => self.rest_in_dorm(state),
@@ -634,7 +687,7 @@ impl Game {
                 )
             }
             Action::GoToComputerClass => {
-                assert!(state.current_time.is_computer_class_open());
+                assert!(state.current_time < Time::computer_class_closing());
                 state.location = Location::ComputerClass;
                 self.decrease_health(
                     HealthLevel::location_change_small_penalty(),
@@ -679,6 +732,78 @@ impl Game {
                 assert!(state.player.is_employed_at_terkom);
                 todo!()
             }
+            Action::IAmDone => self.i_am_done(state),
+            _ => illegal_action!(action),
+        }
+    }
+
+    fn surf_internet(&mut self, state: GameState) -> tiny_vec_ty![Action; 16] {
+        let player = &state.player;
+        let cs_problems_done = player
+            .status_for_subject(Subject::ComputerScience)
+            .problems_done;
+        let cs_problems_required = SUBJECTS[Subject::ComputerScience].1.required_problems;
+        let found_program = player.god_mode
+            || (self.rng.random(player.brain) > BrainLevel(6)
+                && cs_problems_done < cs_problems_required);
+        self.screen = GameScreen::SurfInternet(state, found_program);
+        wait_for_any_key()
+    }
+
+    fn proceed_with_internet(
+        &mut self,
+        mut state: GameState,
+        action: Action,
+        found_program: bool,
+    ) -> tiny_vec_ty![Action; 16] {
+        assert_eq!(action, Action::AnyKey);
+        if found_program {
+            state
+                .player
+                .status_for_subject_mut(Subject::ComputerScience)
+                .problems_done += 1;
+        } else if state.player.brain < BrainLevel(5) && self.rng.roll_dice(3) {
+            state.player.brain += 1;
+        }
+        self.hour_pass(state)
+    }
+
+    fn handle_computer_class_action(
+        &mut self,
+        mut state: GameState,
+        action: Action,
+    ) -> tiny_vec_ty![Action; 16] {
+        assert_eq!(state.location, Location::ComputerClass);
+        match action {
+            Action::Exam(Subject::ComputerScience) => todo!(),
+            Action::GoFromPunkToDorm => {
+                state.location = Location::Dorm;
+                self.scene_router(state)
+            }
+            Action::LeaveComputerClass => {
+                state.location = Location::PUNK;
+                self.decrease_health(
+                    HealthLevel::location_change_small_penalty(),
+                    state,
+                    CauseOfDeath::CouldntLeaveTheComputer,
+                    /*if_alive=*/ |game, state| game.scene_router(state),
+                )
+            }
+            Action::GoToPDMI => todo!(),
+            Action::GoToMausoleum => {
+                state.location = Location::Mausoleum;
+                self.decrease_health(
+                    HealthLevel::location_change_small_penalty(),
+                    state,
+                    CauseOfDeath::OnTheWayToMausoleum,
+                    /*if_alive=*/ |game, state| game.scene_router(state),
+                )
+            }
+            Action::SurfInternet => self.surf_internet(state),
+            Action::InteractWithClassmate(RAI) => todo!(),
+            Action::InteractWithClassmate(Kuzmenko) => todo!(),
+            Action::InteractWithClassmate(Diamond) => todo!(),
+            Action::PlayMMHEROES => todo!(),
             Action::IAmDone => self.i_am_done(state),
             _ => illegal_action!(action),
         }
@@ -1136,11 +1261,11 @@ impl Game {
         }
     }
 
-    fn try_to_sleep(&mut self, mut state: GameState) -> tiny_vec_ty![Action; 16] {
+    fn try_to_sleep(&mut self, state: GameState) -> tiny_vec_ty![Action; 16] {
         assert!(state.location == Location::Dorm);
         if state.current_time > Time(3) && state.current_time < Time(20) {
-            state.failed_attempt_to_sleep = true;
-            self.scene_router(state)
+            self.screen = GameScreen::Sleep(state);
+            wait_for_any_key()
         } else {
             self.go_to_sleep(state)
         }

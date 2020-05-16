@@ -25,8 +25,8 @@ impl Time {
         self.0 >= 9 && self.0 <= 19
     }
 
-    pub fn is_computer_class_open(self) -> bool {
-        self.0 < 20
+    pub const fn computer_class_closing() -> Time {
+        Time(20)
     }
 
     pub fn is_cafe_open(self) -> bool {

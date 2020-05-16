@@ -5,36 +5,24 @@ use crate::ui::{renderer::Renderer, screens::scene_router, *};
 pub(in crate::ui) fn display_kolya_interaction(
     r: &mut Renderer,
     state: &GameState,
+    available_actions: &[Action],
     interaction: npc::KolyaInteraction,
 ) -> WaitingState {
     use KolyaInteraction::*;
 
-    scene_router::display_header_stats(r, state);
-
-    let today_timetable = |r: &mut Renderer| {
-        scene_router::display_short_today_timetable(
-            r,
-            11,
-            state.current_day(),
-            state.player(),
-        )
-    };
-
-    let oat_tincture_is_better = |r: &mut Renderer| {
-        writeln_colored!(
-            WhiteBright,
-            r,
-            "\"Знаешь, пиво, конечно, хорошо, но настойка овса - лучше!\""
-        );
-    };
-
-    let brake_fluid = |r: &mut Renderer| {
-        writeln_colored!(
-            MagentaBright,
-            r,
-            "Коля достает тормозную жидкость, и вы распиваете еще по стакану."
-        );
-    };
+    match interaction {
+        SolvedAlgebraProblemsForFree | PromptOatTincture | BrakeFluidNoMoney => {
+            r.clear_screen();
+            scene_router::display_header_stats(r, state);
+            r.move_cursor_to(7, 0);
+            writeln_colored!(
+                White,
+                r,
+                "Коля смотрит на тебя немного окосевшими глазами."
+            );
+        }
+        _ => (),
+    }
 
     let solved_algebra_problems = |r: &mut Renderer| {
         writeln_colored!(
@@ -47,51 +35,63 @@ pub(in crate::ui) fn display_kolya_interaction(
         writeln_colored!(White, r, " задачи по алгебре!");
     };
 
-    r.move_cursor_to(7, 0);
-    writeln_colored!(White, r, "Коля смотрит на тебя немного окосевшими глазами.");
-
-    if interaction == SolvedAlgebraProblemsForFree {
-        solved_algebra_problems(r);
-        return wait_for_any_key(r);
+    match interaction {
+        SolvedAlgebraProblemsForFree => {
+            solved_algebra_problems(r);
+            return wait_for_any_key(r);
+        }
+        PromptOatTincture | BrakeFluidNoMoney => {
+            writeln_colored!(
+                WhiteBright,
+                r,
+                "\"Знаешь, пиво, конечно, хорошо, но настойка овса - лучше!\""
+            );
+        }
+        _ => {}
     }
 
-    oat_tincture_is_better(r);
-
-    if interaction == BrakeFluidNoMoney {
-        r.move_cursor_to(14, 0);
-        brake_fluid(r);
-        return wait_for_any_key(r);
-    }
-
-    writeln_colored!(White, r, "Заказать Коле настойку овса?");
-    today_timetable(r);
-    r.move_cursor_to(14, 0);
-
-    let prompt_options = dialog_options_for_actions(&[Action::Yes, Action::No]);
-
-    if interaction == PromptOatTincture {
-        return dialog(r, prompt_options);
-    } else {
-        inactive_dialog(r, &prompt_options);
-    }
-
-    r.move_cursor_to(18, 0);
+    let brake_fluid = |r: &mut Renderer| {
+        writeln_colored!(
+            MagentaBright,
+            r,
+            "Коля достает тормозную жидкость, и вы распиваете еще по стакану."
+        );
+    };
 
     match interaction {
-        SolvedAlgebraProblemsForOatTincture => solved_algebra_problems(r),
+        SolvedAlgebraProblemsForFree => unreachable!(),
+        PromptOatTincture => {
+            writeln_colored!(White, r, "Заказать Коле настойку овса?");
+            scene_router::display_short_today_timetable(
+                r,
+                11,
+                state.current_day(),
+                state.player(),
+            );
+            r.move_cursor_to(14, 0);
+            return dialog(r, available_actions);
+        }
+        SolvedAlgebraProblemsForOatTincture => {
+            r.move_cursor_to(18, 0);
+            solved_algebra_problems(r);
+        }
+        BrakeFluidNoMoney => {
+            r.move_cursor_to(14, 0);
+            brake_fluid(r);
+            return wait_for_any_key(r);
+        }
         BrakeFluidBecauseRefused => {
+            r.move_cursor_to(18, 0);
             writeln_colored!(WhiteBright, r, "\"Зря, ой, зря ...\"");
             brake_fluid(r);
         }
         Altruism => {
+            r.move_cursor_to(18, 0);
             writeln_colored!(
                 White,
                 r,
                 "Твой альтруизм навсегда останется в памяти потомков."
             );
-        }
-        SolvedAlgebraProblemsForFree | PromptOatTincture | BrakeFluidNoMoney => {
-            unreachable!();
         }
     }
 
@@ -122,36 +122,48 @@ pub(in crate::ui) fn display_pasha_interaction(
 pub(in crate::ui) fn display_grisha_interaction(
     r: &mut Renderer,
     state: &GameState,
+    available_actions: &[Action],
     interaction: npc::GrishaInteraction,
 ) -> WaitingState {
     use GrishaInteraction::*;
 
-    scene_router::display_header_stats(r, state);
-    r.move_cursor_to(7, 0);
-    r.set_color(Color::White, Color::Black);
-
-    let terkom_employment = |r: &mut Renderer| {
-        writeln_colored!(
-            YellowBright,
-            r,
-            "\"А ты не хочешь устроиться в ТЕРКОМ? Может, кое-чего подзаработаешь...\""
-        );
-        writeln!(r);
-    };
-
-    let employment_options = dialog_options_for_actions(&[
-        Action::AcceptEmploymentAtTerkom,
-        Action::DeclineEmploymentAtTerkom,
-    ]);
+    match interaction {
+        PromptEmploymentAtTerkom
+        | ProxyAddress
+        | WantFreebie { .. }
+        | FreebieComeToMe { .. }
+        | FreebieExists { .. }
+        | LetsOrganizeFreebieLoversClub { .. }
+        | NoNeedToStudyToGetDiploma { .. }
+        | YouStudiedDidItHelp { .. }
+        | ThirdYearStudentsDontAttendLectures { .. }
+        | TakeExampleFromKolya { .. }
+        | HateLevTolstoy { .. }
+        | DontGoToPDMI { .. }
+        | NamesOfFreebieLovers { .. }
+        | LetsHaveABreakHere { .. }
+        | NoNeedToTakeLectureNotes { .. }
+        | CantBeExpelledInFourthYear { .. }
+        | MechanicsHaveFreebie { .. } => {
+            r.clear_screen();
+            scene_router::display_header_stats(r, state);
+            r.move_cursor_to(7, 0);
+            r.set_color(Color::White, Color::Black);
+        }
+        CongratulationsYouAreNowEmployed | AsYouWantButDontOverstudy => (),
+    }
 
     let (reply, drink_beer, hour_pass) = match interaction {
         PromptEmploymentAtTerkom => {
-            terkom_employment(r);
-            return dialog(r, employment_options);
+            writeln_colored!(
+                YellowBright,
+                r,
+                "\"А ты не хочешь устроиться в ТЕРКОМ? Может, кое-чего подзаработаешь...\""
+            );
+            writeln!(r);
+            return dialog(r, available_actions);
         }
         CongratulationsYouAreNowEmployed => {
-            terkom_employment(r);
-            inactive_dialog(r, &employment_options);
             r.move_cursor_to(13, 0);
             writeln_colored!(
                 White,
@@ -161,8 +173,6 @@ pub(in crate::ui) fn display_grisha_interaction(
             return wait_for_any_key(r);
         }
         AsYouWantButDontOverstudy => {
-            terkom_employment(r);
-            inactive_dialog(r, &employment_options);
             r.move_cursor_to(13, 0);
             writeln_colored!(
                 White,

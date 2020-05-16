@@ -16,5 +16,5 @@ pub(in crate::ui) fn display_rest_in_mausoleum(
         state.player(),
     );
     r.move_cursor_to(10, 0);
-    dialog(r, dialog_options_for_actions(available_actions))
+    dialog(r, available_actions)
 }

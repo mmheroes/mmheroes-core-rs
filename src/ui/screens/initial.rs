@@ -63,7 +63,7 @@ pub(in crate::ui) fn display_initial_parameters(
     writeln!(r, "Выбери начальные параметры своего \"героя\":");
     writeln!(r);
 
-    dialog(r, dialog_options_for_actions(available_actions))
+    dialog(r, available_actions)
 }
 
 pub(in crate::ui) fn display_ding(r: &mut Renderer) -> WaitingState {

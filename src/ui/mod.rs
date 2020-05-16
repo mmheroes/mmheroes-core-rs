@@ -148,7 +148,7 @@ impl GameUI<'_> {
                             display_dialog(
                                 &mut self.renderer,
                                 start,
-                                current_choice,
+                                Some(current_choice),
                                 &*options,
                             );
                             self.renderer.waiting_state = Some(WaitingState::Dialog {
@@ -164,7 +164,7 @@ impl GameUI<'_> {
                             display_dialog(
                                 &mut self.renderer,
                                 start,
-                                current_choice,
+                                Some(current_choice),
                                 &*options,
                             );
                             self.renderer.waiting_state = Some(WaitingState::Dialog {
@@ -174,7 +174,10 @@ impl GameUI<'_> {
                             });
                             return true;
                         }
-                        Input::Enter => options[current_choice as usize].2,
+                        Input::Enter => {
+                            display_dialog(&mut self.renderer, start, None, &*options);
+                            options[current_choice as usize].2
+                        }
                         Input::Other => return true, // Do nothing
                     }
                 }
@@ -183,40 +186,63 @@ impl GameUI<'_> {
             self.game.perform_action(action);
         }
 
-        self.renderer.clear_screen();
         let new_waiting_state = match self.game.screen() {
-            Intro => screens::initial::display_intro(&mut self.renderer),
-            InitialParameters => screens::initial::display_initial_parameters(
-                &mut self.renderer,
-                self.game.available_actions(),
-                self.game.mode(),
-            ),
-            Ding(_) => screens::initial::display_ding(&mut self.renderer),
+            Intro => {
+                self.renderer.clear_screen();
+                screens::initial::display_intro(&mut self.renderer)
+            }
+            InitialParameters => {
+                self.renderer.clear_screen();
+                screens::initial::display_initial_parameters(
+                    &mut self.renderer,
+                    self.game.available_actions(),
+                    self.game.mode(),
+                )
+            }
+            Ding(_) => {
+                self.renderer.clear_screen();
+                screens::initial::display_ding(&mut self.renderer)
+            }
             GameScreen::Timetable(state) => {
+                self.renderer.clear_screen();
                 screens::timetable::display_timetable(&mut self.renderer, state)
             }
-            SceneRouter(state) => screens::scene_router::display_scene_router(
-                &mut self.renderer,
-                self.game.available_actions(),
-                state,
-            ),
-            HighScores(_) => screens::high_scores::display_high_scores(
-                &mut self.renderer,
-                &self.high_scores,
-            ),
-            RestInMausoleum(state) => screens::rest::display_rest_in_mausoleum(
-                &mut self.renderer,
-                self.game.available_actions(),
-                state,
-            ),
+            SceneRouter(state) => {
+                self.renderer.clear_screen();
+                screens::scene_router::display_scene_router(
+                    &mut self.renderer,
+                    self.game.available_actions(),
+                    state,
+                )
+            }
+            Sleep(state) => {
+                screens::scene_router::display_sleeping(&mut self.renderer, state)
+            }
+            HighScores(_) => {
+                self.renderer.clear_screen();
+                screens::high_scores::display_high_scores(
+                    &mut self.renderer,
+                    &self.high_scores,
+                )
+            }
+            RestInMausoleum(state) => {
+                self.renderer.clear_screen();
+                screens::rest::display_rest_in_mausoleum(
+                    &mut self.renderer,
+                    self.game.available_actions(),
+                    state,
+                )
+            }
             KolyaInteraction(state, interaction) => {
                 screens::npc::display_kolya_interaction(
                     &mut self.renderer,
                     state,
+                    self.game.available_actions(),
                     *interaction,
                 )
             }
             PashaInteraction(state, interaction) => {
+                self.renderer.clear_screen();
                 screens::npc::display_pasha_interaction(
                     &mut self.renderer,
                     state,
@@ -227,45 +253,81 @@ impl GameUI<'_> {
                 screens::npc::display_grisha_interaction(
                     &mut self.renderer,
                     state,
+                    self.game.available_actions(),
                     *interaction,
                 )
             }
-            IAmDone(_) => screens::game_end::display_i_am_done(
-                &mut self.renderer,
-                self.game.available_actions(),
-            ),
+            SurfInternet(state, found_program) => {
+                screens::scene_router::display_surfing_internet(
+                    &mut self.renderer,
+                    state,
+                    *found_program,
+                )
+            }
+            IAmDone(_) => {
+                self.renderer.clear_screen();
+                screens::game_end::display_i_am_done(
+                    &mut self.renderer,
+                    self.game.available_actions(),
+                )
+            }
             GameEnd(state) => {
+                self.renderer.clear_screen();
                 screens::game_end::display_game_end(&mut self.renderer, state)
             }
-            WannaTryAgain => screens::game_end::display_wanna_try_again(
-                &mut self.renderer,
-                self.game.available_actions(),
-            ),
-            Disclaimer => screens::game_end::display_disclaimer(&mut self.renderer),
-            WhatToDo(_) => screens::help::display_what_to_do(
-                &mut self.renderer,
-                self.game.available_actions(),
-            ),
-            AboutScreen(_) => screens::help::display_about_screen(
-                &mut self.renderer,
-                self.game.available_actions(),
-            ),
-            WhereToGoAndWhy(_) => screens::help::display_where_to_go_and_why(
-                &mut self.renderer,
-                self.game.available_actions(),
-            ),
-            AboutProfessors(_) => screens::help::display_about_professors(
-                &mut self.renderer,
-                self.game.available_actions(),
-            ),
-            AboutCharacters(_) => screens::help::display_about_characters(
-                &mut self.renderer,
-                self.game.available_actions(),
-            ),
-            AboutThisProgram(_) => screens::help::display_about_this_program(
-                &mut self.renderer,
-                self.game.available_actions(),
-            ),
+            WannaTryAgain => {
+                self.renderer.clear_screen();
+                screens::game_end::display_wanna_try_again(
+                    &mut self.renderer,
+                    self.game.available_actions(),
+                )
+            }
+            Disclaimer => {
+                self.renderer.clear_screen();
+                screens::game_end::display_disclaimer(&mut self.renderer)
+            }
+            WhatToDo(_) => {
+                self.renderer.clear_screen();
+                screens::help::display_what_to_do(
+                    &mut self.renderer,
+                    self.game.available_actions(),
+                )
+            }
+            AboutScreen(_) => {
+                self.renderer.clear_screen();
+                screens::help::display_about_screen(
+                    &mut self.renderer,
+                    self.game.available_actions(),
+                )
+            }
+            WhereToGoAndWhy(_) => {
+                self.renderer.clear_screen();
+                screens::help::display_where_to_go_and_why(
+                    &mut self.renderer,
+                    self.game.available_actions(),
+                )
+            }
+            AboutProfessors(_) => {
+                self.renderer.clear_screen();
+                screens::help::display_about_professors(
+                    &mut self.renderer,
+                    self.game.available_actions(),
+                )
+            }
+            AboutCharacters(_) => {
+                self.renderer.clear_screen();
+                screens::help::display_about_characters(
+                    &mut self.renderer,
+                    self.game.available_actions(),
+                )
+            }
+            AboutThisProgram(_) => {
+                self.renderer.clear_screen();
+                screens::help::display_about_this_program(
+                    &mut self.renderer,
+                    self.game.available_actions(),
+                )
+            }
             Terminal => {
                 self.renderer.waiting_state = None;
                 return false;
@@ -285,30 +347,27 @@ type DialogOption = (&'static str, Color, Action);
 fn display_dialog(
     r: &mut Renderer,
     start: (Line, Column),
-    current_choice: u8,
+    current_choice: Option<u8>,
     options: &[DialogOption],
 ) {
-    let mut chosen_line_end_position = start;
     for (i, &(name, color, _)) in options.iter().enumerate() {
         r.move_cursor_to(start.0 + i as Line, start.1);
-        if i == current_choice as usize {
-            r.set_color(Color::Black, Color::White);
-        } else {
-            r.set_color(color, Color::Black);
-        }
+        r.set_color(color, Color::Black);
         write!(r, "{}", name);
-        if i == current_choice as usize {
-            chosen_line_end_position = r.get_cursor_position();
-        }
     }
-    r.move_cursor_to(chosen_line_end_position.0, chosen_line_end_position.1);
+    if let Some(current_choice) = current_choice {
+        r.move_cursor_to(start.0 + current_choice, start.1);
+        r.set_color(Color::Black, Color::White);
+        write!(r, "{}", options[current_choice as usize].0);
+    }
     r.flush();
 }
 
-fn dialog(r: &mut Renderer, options: tiny_vec_ty![DialogOption; 16]) -> WaitingState {
+fn dialog(r: &mut Renderer, available_actions: &[Action]) -> WaitingState {
+    let options = dialog_options_for_actions(available_actions);
     let start = r.get_cursor_position();
     let current_choice = 0;
-    display_dialog(r, start, current_choice, &*options);
+    display_dialog(r, start, Some(current_choice), &*options);
     WaitingState::Dialog {
         current_choice,
         start,
@@ -327,15 +386,6 @@ fn wait_for_any_key(r: &mut Renderer) -> WaitingState {
     write!(r, "Нажми любую клавишу ...");
     r.flush();
     WaitingState::PressAnyKey
-}
-
-fn inactive_dialog(r: &mut Renderer, options: &[DialogOption]) {
-    let start = r.get_cursor_position();
-    for (i, &(name, color, _)) in options.iter().enumerate() {
-        r.move_cursor_to(start.0 + i as Line, start.1);
-        r.set_color(color, Color::Black);
-        write!(r, "{}", name);
-    }
 }
 
 pub fn professor_name(subject: Subject) -> &'static str {
@@ -430,7 +480,7 @@ fn dialog_option_for_action(action: Action) -> DialogOption {
         Action::InteractWithClassmate(classmate) => {
             return (classmate_name(classmate), Color::YellowBright, action);
         }
-        Action::InteractWithProfessor(subject) => professor_name(subject),
+        Action::Exam(subject) => professor_name(subject),
         Action::RandomStudent => "Случайный студент",
         Action::CleverStudent => "Шибко умный",
         Action::ImpudentStudent => "Шибко наглый",
@@ -483,9 +533,7 @@ fn dialog_option_for_action(action: Action) -> DialogOption {
     (option_name, Color::CyanBright, action)
 }
 
-pub(in crate::ui) fn dialog_options_for_actions(
-    actions: &[Action],
-) -> tiny_vec_ty![DialogOption; 16] {
+fn dialog_options_for_actions(actions: &[Action]) -> tiny_vec_ty![DialogOption; 16] {
     actions
         .iter()
         .cloned()

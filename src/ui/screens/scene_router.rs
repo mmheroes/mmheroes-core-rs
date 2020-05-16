@@ -28,18 +28,8 @@ pub(in crate::ui) fn display_scene_router(
         }
     }
 
-    let options = dialog_options_for_actions(available_actions);
-
     r.move_cursor_to(9, 0);
-    if state.failed_attempt_to_sleep() {
-        assert!(state.location() == Location::Dorm);
-        inactive_dialog(r, &options);
-        r.move_cursor_to(21, 0);
-        write_colored!(White, r, "Тебя чего-то не тянет по-спать...");
-        wait_for_any_key(r)
-    } else {
-        dialog(r, options)
-    }
+    dialog(r, available_actions)
 }
 
 pub(in crate::ui::screens) fn display_header_stats(r: &mut Renderer, state: &GameState) {
@@ -224,7 +214,7 @@ pub(in crate::ui::screens) fn display_short_today_timetable(
         let problems_required = subject_info.required_problems();
         let problems_color = if problems_done == 0 {
             Color::White
-        } else if problems_done == problems_required {
+        } else if problems_done >= problems_required {
             Color::YellowBright
         } else {
             Color::Green
@@ -233,4 +223,32 @@ pub(in crate::ui::screens) fn display_short_today_timetable(
 
         write!(r, "{:>2}/{}", problems_done, problems_required);
     }
+}
+
+pub(in crate::ui) fn display_sleeping(
+    r: &mut Renderer,
+    state: &GameState,
+) -> WaitingState {
+    // TODO: Реализовать что-то кроме неудавшегося сна.
+    assert!(state.location() == Location::Dorm);
+    r.move_cursor_to(21, 0);
+    write_colored!(White, r, "Тебя чего-то не тянет по-спать...");
+    wait_for_any_key(r)
+}
+
+pub(in crate::ui) fn display_surfing_internet(
+    r: &mut Renderer,
+    state: &GameState,
+    found_program: bool,
+) -> WaitingState {
+    assert!(state.location() == Location::ComputerClass);
+    if found_program {
+        r.move_cursor_to(19, 0);
+        write_colored!(
+            CyanBright,
+            r,
+            "Ух ты! Ты нашел програмку, которая нужна для Климова!"
+        );
+    }
+    wait_for_any_key(r)
 }

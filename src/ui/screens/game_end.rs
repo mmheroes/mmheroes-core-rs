@@ -8,7 +8,7 @@ pub(in crate::ui) fn display_i_am_done(
     writeln_colored!(White, r, "Ну, может не надо так резко...");
     writeln_colored!(White, r, "Ты что, серьезно хочешь закончить игру?");
     writeln!(r);
-    dialog(r, dialog_options_for_actions(available_actions))
+    dialog(r, available_actions)
 }
 
 fn display_game_end_dead(r: &mut Renderer, cause: CauseOfDeath) -> WaitingState {
@@ -90,7 +90,7 @@ pub(in crate::ui) fn display_wanna_try_again(
     writeln!(r);
     writeln!(r);
 
-    dialog(r, dialog_options_for_actions(available_actions))
+    dialog(r, available_actions)
 }
 
 pub(in crate::ui) fn display_disclaimer(r: &mut Renderer) -> WaitingState {
