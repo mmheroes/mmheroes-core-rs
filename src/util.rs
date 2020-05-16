@@ -75,7 +75,7 @@ macro_rules! array {
     };
 }
 
-pub(crate) trait TinyVecStorage {
+pub trait TinyVecStorage {
     type Element;
     fn as_slice(&self) -> &[MaybeUninit<Self::Element>];
     fn as_mut_slice(&mut self) -> &mut [MaybeUninit<Self::Element>];
@@ -216,6 +216,7 @@ macro_rules! __tiny_vec_implementation {
 }
 
 __tiny_vec_implementation!(16);
+__tiny_vec_implementation!(128);
 __tiny_vec_implementation!(2048);
 
 impl<Storage: TinyVecStorage> TinyVec<Storage> {
@@ -257,6 +258,103 @@ macro_rules! tiny_vec {
         tiny_vec![capacity: $capacity, [$($elements),*]]
     )
 }
+
+pub struct TinyString<Storage: TinyVecStorage> {
+    v: TinyVec<Storage>,
+}
+
+macro_rules! tiny_string_ty {
+    ($capacity:literal) => {
+        $crate::util::TinyString::<[core::mem::MaybeUninit<u8>; $capacity]>
+    };
+}
+
+macro_rules! __tiny_string_implementation {
+    ($capacity:literal) => {
+        impl tiny_string_ty![$capacity] {
+            pub(crate) fn new() -> Self {
+                Self {
+                    v: <tiny_vec_ty![u8; $capacity]>::new()
+                }
+            }
+
+            pub(crate) fn push(&mut self, ch: char) {
+                match ch.len_utf8() {
+                    1 => self.v.push(ch as u8),
+                    _ => self.v.extend_from_slice(ch.encode_utf8(&mut [0; 4]).as_bytes()),
+                }
+            }
+        }
+        impl From<&str> for tiny_string_ty![$capacity] {
+            fn from(s: &str) -> Self {
+                Self {
+                    v: s.bytes().collect()
+                }
+            }
+        }
+
+        impl Deref for tiny_string_ty![$capacity] {
+            type Target = str;
+
+            fn deref(&self) -> &Self::Target {
+                unsafe {
+                    core::str::from_utf8_unchecked(&*self.v)
+                }
+            }
+        }
+
+        impl FromIterator<char> for tiny_string_ty![$capacity] {
+            fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> Self {
+                let mut v = Self::new();
+                for element in iter {
+                    v.push(element);
+                }
+                v
+            }
+        }
+
+        impl PartialEq for tiny_string_ty![$capacity] {
+            fn eq(&self, other: &tiny_string_ty![$capacity]) -> bool {
+                PartialEq::eq(&self[..], &other[..])
+            }
+            fn ne(&self, other: &tiny_string_ty![$capacity]) -> bool {
+                PartialEq::ne(&self[..], &other[..])
+            }
+        }
+
+        impl PartialEq<str> for tiny_string_ty![$capacity] {
+            fn eq(&self, other: &str) -> bool {
+                PartialEq::eq(&self[..], &other[..])
+            }
+            fn ne(&self, other: &str) -> bool {
+                PartialEq::ne(&self[..], &other[..])
+            }
+        }
+
+        impl<'a> PartialEq<&'a str> for tiny_string_ty![$capacity] {
+            fn eq(&self, other: & &'a str) -> bool {
+                PartialEq::eq(&self[..], &other[..])
+            }
+            fn ne(&self, other: &&'a str) -> bool {
+                PartialEq::ne(&self[..], &other[..])
+            }
+        }
+
+        impl Debug for tiny_string_ty![$capacity] {
+            fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+                Debug::fmt(&self[..], f)
+            }
+        }
+
+        impl core::fmt::Display for tiny_string_ty![$capacity] {
+            fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+                core::fmt::Display::fmt(&self[..], f)
+            }
+        }
+    };
+}
+
+__tiny_string_implementation!(128);
 
 /// В переданной шкале пар `scale` находит первую пару, первый элемент которой строго
 /// больше чем `value`, и возвращает второй элемент этой пары. Если такая пара не найдена,

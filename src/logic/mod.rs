@@ -166,6 +166,9 @@ pub enum GameScreen {
     /// Главный экран.
     SceneRouter(GameState),
 
+    /// Экран с рекордами — баобаб в ПУНКе или доска объявлений в ПОМИ.
+    HighScores(GameState),
+
     /// Отдых в мавзолее.
     RestInMausoleum(GameState),
 
@@ -267,6 +270,7 @@ impl Game {
         match &self.screen {
             Timetable(state)
             | SceneRouter(state)
+            | HighScores(state)
             | IAmDone(state)
             | GameEnd(state)
             | WhatToDo(state)
@@ -313,6 +317,13 @@ impl Game {
                 let state = state.clone();
                 self.handle_scene_router_action(state, action)
             }
+            HighScores(state) => match action {
+                Action::AnyKey => {
+                    let state = state.clone();
+                    self.scene_router(state)
+                }
+                _ => illegal_action!(action),
+            },
             RestInMausoleum(state) => {
                 let state = state.clone();
                 self.handle_rest_in_mausoleum(state, action)
@@ -592,7 +603,10 @@ impl Game {
         assert_eq!(state.location, Location::PUNK);
         match action {
             Action::GoToProfessor => todo!(),
-            Action::LookAtBaobab => todo!(),
+            Action::LookAtBaobab => {
+                self.screen = GameScreen::HighScores(state);
+                wait_for_any_key()
+            }
             Action::GoFromPunkToDorm => {
                 state.location = Location::Dorm;
                 self.scene_router(state)

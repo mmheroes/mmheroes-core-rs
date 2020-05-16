@@ -1,9 +1,12 @@
+use crate::ui::high_scores;
 use crate::ui::recording::InputRecorder;
 use crate::ui::Milliseconds;
 use crate::ui::*;
 
-use crate::logic::{Game, GameMode, Time};
+use crate::logic::{Game, GameMode, Money, Time};
 
+use crate::ui::high_scores::SCORE_COUNT;
+use crate::util::TinyString;
 use core::ffi::c_void;
 use core::mem::{align_of, size_of};
 
@@ -116,8 +119,104 @@ pub extern "C" fn mmheroes_game_get_current_time(
     })
 }
 
-ffi_constructor!(mmheroes_game_ui_create, (game: &mut Game) -> GameUI);
+#[repr(C)]
+pub struct FfiHighScore {
+    name: *const u8,
+    name_len: usize,
+    score: Money,
+}
+
+/// Выделяет память для объекта, используя переданный аллокатор,
+/// а затем инициализирует объект и возвращает на него указатель.
+///
+/// Аллокатор должен возвращать корректно выровненный указатель на блок памяти
+/// достаточного размера. Нарушение любого из этих условий — неопределённое поведение.
+///
+/// Размер и выравнивание передаются в качестве аргументов аллокатору.
+///
+/// Параметр `high_scores` — указатель (возможно нулевой) на массив из
+/// `MMHEROES_SCORE_COUNT` элементов.
+#[no_mangle]
+pub unsafe extern "C" fn mmheroes_game_ui_create(
+    game: &mut Game,
+    high_scores: *const FfiHighScore,
+    allocator_context: AllocatorContext,
+    allocator: Allocator,
+) -> *mut GameUI {
+    use core::ptr::{null_mut, write};
+
+    let memory = allocator(allocator_context, size_of::<GameUI>(), align_of::<GameUI>())
+        as *mut GameUI;
+    if memory.is_null() {
+        return null_mut();
+    }
+
+    ffi_safely_run(move || {
+        let scores = if high_scores.is_null() {
+            None
+        } else {
+            let mut scores = crate::ui::high_scores::default_high_scores();
+            let slice =
+                core::slice::from_raw_parts(high_scores, high_scores::SCORE_COUNT);
+            for (i, score) in slice.iter().enumerate() {
+                let name_buf = core::slice::from_raw_parts(score.name, score.name_len);
+                let name =
+                    core::str::from_utf8(name_buf).expect("Name is not valid UTF-8");
+                scores[i].0 = TinyString::from(name);
+                scores[i].1 = score.score;
+            }
+            Some(scores)
+        };
+
+        write(memory, <GameUI>::new(game, scores));
+    });
+
+    memory
+}
+
 ffi_destructor!(mmheroes_game_ui_destroy, (game_ui: GameUI));
+
+/// Записывает в аргумент `out` `MMHEROES_SCORE_COUNT` элементов.
+/// `out` не должен быть нулевым указателем.
+/// Результат, записанный в `out`, не должен жить дольше, чем экземпляр
+/// соответствующего `GameUI`.
+#[no_mangle]
+pub unsafe extern "C" fn mmheroes_game_ui_get_high_scores(
+    game_ui: &GameUI,
+    out: *mut FfiHighScore,
+) {
+    ffi_safely_run(|| {
+        assert!(!out.is_null());
+        let out_slice = core::slice::from_raw_parts_mut(out, SCORE_COUNT);
+        for (high_score, out) in game_ui.high_scores.iter().zip(out_slice.iter_mut()) {
+            *out = FfiHighScore {
+                name: high_score.0.as_ptr(),
+                name_len: high_score.0.len(),
+                score: high_score.1,
+            }
+        }
+    })
+}
+/// `new_high_scores` — ненулевой указатель на массив из `MMHEROES_SCORE_COUNT` элементов.
+#[no_mangle]
+pub unsafe extern "C" fn mmheroes_game_ui_set_high_scores(
+    game_ui: &mut GameUI,
+    new_high_scores: *const FfiHighScore,
+) {
+    ffi_safely_run(|| {
+        assert!(!new_high_scores.is_null());
+        let new_high_scores = core::slice::from_raw_parts(new_high_scores, SCORE_COUNT);
+        for (high_score, new_high_score) in
+            game_ui.high_scores.iter_mut().zip(new_high_scores.iter())
+        {
+            let name_buf =
+                core::slice::from_raw_parts(new_high_score.name, new_high_score.name_len);
+            let name = core::str::from_utf8(name_buf).expect("Name is not valid UTF-8");
+            high_score.0 = TinyString::from(name);
+            high_score.1 = new_high_score.score;
+        }
+    })
+}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -307,12 +406,45 @@ mod tests {
         std::alloc::dealloc(memory as *mut u8, Layout::from_size_align(size, 8).unwrap())
     }
 
+    fn high_scores() -> [FfiHighScore; high_scores::SCORE_COUNT] {
+        macro_rules! ffi_high_score {
+            ($name:literal, $score:literal) => {
+                FfiHighScore {
+                    name: $name.as_ptr(),
+                    name_len: $name.len(),
+                    score: Money($score),
+                }
+            };
+        }
+        [
+            ffi_high_score!("Оля", 142),
+            ffi_high_score!("Вероника", 192),
+            ffi_high_score!("Наташа", 144),
+            ffi_high_score!("Катя", 113),
+            ffi_high_score!("Рита", 120),
+        ]
+    }
+
     #[test]
     fn test_ffi() {
         unsafe {
             let game = mmheroes_game_create(GameMode::Normal, 0, null_mut(), allocator);
 
-            let game_ui = mmheroes_game_ui_create(&mut *game, null_mut(), allocator);
+            let scores = high_scores();
+
+            let game_ui = mmheroes_game_ui_create(
+                &mut *game,
+                scores.as_ptr(),
+                null_mut(),
+                allocator,
+            );
+
+            let scores = &(&*game_ui).high_scores;
+            assert_eq!(scores[0].0, "Оля");
+            assert_eq!(scores[1].0, "Вероника");
+            assert_eq!(scores[2].0, "Наташа");
+            assert_eq!(scores[3].0, "Катя");
+            assert_eq!(scores[4].0, "Рита");
 
             mmheroes_continue(&mut *game_ui, Input::Enter);
 

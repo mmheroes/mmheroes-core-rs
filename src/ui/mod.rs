@@ -20,7 +20,11 @@ pub mod renderer;
 pub use renderer::RendererRequest;
 use renderer::*;
 
+pub(crate) mod cp866_encoding;
 pub mod recording;
+
+pub mod high_scores;
+use high_scores::HighScore;
 
 use crate::logic::*;
 
@@ -105,13 +109,19 @@ pub struct Milliseconds(pub i32);
 pub struct GameUI<'game> {
     renderer: Renderer,
     game: &'game mut Game,
+    pub high_scores: [HighScore; high_scores::SCORE_COUNT],
 }
 
 impl GameUI<'_> {
-    pub fn new(game: &mut Game) -> GameUI {
+    pub fn new(
+        game: &mut Game,
+        high_scores: Option<[HighScore; high_scores::SCORE_COUNT]>,
+    ) -> GameUI {
+        let default_high_scores = high_scores::default_high_scores();
         GameUI {
             renderer: Renderer::new(),
             game,
+            high_scores: high_scores.unwrap_or(default_high_scores),
         }
     }
 
@@ -189,6 +199,10 @@ impl GameUI<'_> {
                 &mut self.renderer,
                 self.game.available_actions(),
                 state,
+            ),
+            HighScores(_) => screens::high_scores::display_high_scores(
+                &mut self.renderer,
+                &self.high_scores,
             ),
             RestInMausoleum(state) => screens::rest::display_rest_in_mausoleum(
                 &mut self.renderer,

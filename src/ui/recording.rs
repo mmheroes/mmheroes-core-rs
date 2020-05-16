@@ -178,14 +178,14 @@ mod tests {
         recorder.record_input(Input::KeyDown)?;
         recorder.flush()?;
 
-        assert_eq!(output, "↓⏎↑.2↓5⏎2.12↑↓");
+        assert_eq!(output, "↓r↑.2↓5r2.12↑↓");
 
         Ok(())
     }
 
     #[test]
     fn test_successful_parsing() -> Result<(), InputRecordingParserError> {
-        let input = "↓⏎↑.2↓5⏎2.12↑↓";
+        let input = "↓r↑.2↓5r2.12↑↓";
         let mut parser = InputRecordingParser::new(&input);
         let mut parsed_input = Vec::new();
 
@@ -231,7 +231,7 @@ mod tests {
 
     #[test]
     fn test_parsing_unexpected_eof() {
-        let input = "↓↓2⏎13";
+        let input = "↓↓2r13";
         let mut parser = InputRecordingParser::new(&input);
         let mut parsed_input = Vec::new();
 
@@ -253,7 +253,7 @@ mod tests {
 
     #[test]
     fn test_parsing_unknown_character() {
-        let input = "↓2⏎3!⏎";
+        let input = "↓2r3!r";
         let mut parser = InputRecordingParser::new(&input);
         let mut parsed_input = Vec::new();
 

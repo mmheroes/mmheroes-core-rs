@@ -9,6 +9,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define MMHEROES_BUFFER_SIZE (MMHEROES_SCORE_COUNT * MMHEROES_RECORD_SIZE)
+
+#define MMHEROES_MAX_NAME_LENGTH 32
+
 /**
  * Максимальное число возможных вариантов на главном экране.
  */
@@ -17,6 +21,10 @@
 #define MMHEROES_NUM_DAYS 6
 
 #define MMHEROES_NUM_SUBJECTS 6
+
+#define MMHEROES_RECORD_SIZE 35
+
+#define MMHEROES_SCORE_COUNT 5
 
 typedef enum {
   MMHEROES_Color_Black = 0,
@@ -97,6 +105,14 @@ typedef void (*MMHEROES_Deallocator)(MMHEROES_AllocatorContext, void*, uintptr_t
  * типа `Duration` и получать новый экземпляр типа `Time`.
  */
 typedef uint8_t MMHEROES_Time;
+
+typedef int16_t MMHEROES_Money;
+
+typedef struct {
+  const uint8_t *name;
+  uintptr_t name_len;
+  MMHEROES_Money score;
+} MMHEROES_HighScore;
 
 typedef struct {
   void *context;
@@ -197,14 +213,33 @@ bool mmheroes_game_get_current_time(MMHEROES_Game *game,
  * достаточного размера. Нарушение любого из этих условий — неопределённое поведение.
  *
  * Размер и выравнивание передаются в качестве аргументов аллокатору.
+ *
+ * Параметр `high_scores` — указатель (возможно нулевой) на массив из
+ * `MMHEROES_SCORE_COUNT` элементов.
  */
 MMHEROES_GameUI *mmheroes_game_ui_create(MMHEROES_Game *game,
+                                         const MMHEROES_HighScore *high_scores,
                                          MMHEROES_AllocatorContext allocator_context,
                                          MMHEROES_Allocator allocator);
 
 void mmheroes_game_ui_destroy(MMHEROES_GameUI *game_ui,
                               MMHEROES_AllocatorContext deallocator_context,
                               MMHEROES_Deallocator deallocator);
+
+/**
+ * Записывает в аргумент `out` `MMHEROES_SCORE_COUNT` элементов.
+ * `out` не должен быть нулевым указателем.
+ * Результат, записанный в `out`, не должен жить дольше, чем экземпляр
+ * соответствующего `GameUI`.
+ */
+void mmheroes_game_ui_get_high_scores(const MMHEROES_GameUI *game_ui,
+                                      MMHEROES_HighScore *out);
+
+/**
+ * `new_high_scores` — ненулевой указатель на массив из `MMHEROES_SCORE_COUNT` элементов.
+ */
+void mmheroes_game_ui_set_high_scores(MMHEROES_GameUI *game_ui,
+                                      const MMHEROES_HighScore *new_high_scores);
 
 /**
  * Выделяет память для объекта, используя переданный аллокатор,

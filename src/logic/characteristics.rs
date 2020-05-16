@@ -5,7 +5,7 @@ macro_rules! define_characteristic {
     ($name:ident) => {
         #[repr(transparent)]
         #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug)]
-        pub struct $name(pub(in crate::logic) i16);
+        pub struct $name(pub i16);
 
         impl core::ops::AddAssign for $name {
             fn add_assign(&mut self, rhs: Self) {
