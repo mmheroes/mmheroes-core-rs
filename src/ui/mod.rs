@@ -439,6 +439,9 @@ fn dialog_option_for_action(action: Action) -> DialogOption {
         Action::InteractWithClassmate(classmate) => {
             return (classmate_name(classmate), Color::YellowBright, action);
         }
+        Action::Klimov => {
+            return (professor_name(Subject::ComputerScience), Color::YellowBright, action);
+        }
         Action::Exam(subject) => professor_name(subject),
         Action::RandomStudent => "Случайный студент",
         Action::CleverStudent => "Шибко умный",
