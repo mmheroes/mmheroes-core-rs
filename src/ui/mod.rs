@@ -439,7 +439,13 @@ fn dialog_option_for_action(action: Action) -> DialogOption {
         Action::InteractWithClassmate(classmate) => {
             return (classmate_name(classmate), Color::YellowBright, action);
         }
-        Action::Exam(subject) => professor_name(subject),
+        Action::Exam(subject) => {
+            if subject == Subject::ComputerScience {
+                return (professor_name(subject), Color::YellowBright, action);
+            } else {
+                professor_name(subject)
+            }
+        }
         Action::RandomStudent => "Случайный студент",
         Action::CleverStudent => "Шибко умный",
         Action::ImpudentStudent => "Шибко наглый",
