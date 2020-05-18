@@ -23,7 +23,6 @@ pub enum Action {
     Yes,
     No,
     InteractWithClassmate(Classmate),
-    Klimov,
     Exam(Subject),
     RandomStudent,
     CleverStudent,
@@ -544,7 +543,7 @@ impl Game {
                     state.current_day(),
                     state.current_time,
                 ) {
-                    available_actions.push(Action::Klimov);
+                    available_actions.push(Action::Exam(Subject::ComputerScience));
                 }
                 available_actions.push(Action::GoFromPunkToDorm);
                 available_actions.push(Action::LeaveComputerClass);
@@ -856,7 +855,7 @@ impl Game {
     ) -> tiny_vec_ty![Action; 16] {
         assert_eq!(state.location, Location::ComputerClass);
         match action {
-            Action::Klimov => todo!("Климов А.А."),
+            Action::Exam(Subject::ComputerScience) => todo!(),
             Action::GoFromPunkToDorm => {
                 state.location = Location::Dorm;
                 self.scene_router(state)
