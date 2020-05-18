@@ -253,3 +253,21 @@ pub(in crate::ui) fn display_surfing_internet(
     }
     wait_for_any_key(r)
 }
+
+pub(in crate::ui) fn display_available_professors(
+    r: &mut Renderer,
+    state: &GameState,
+    available_actions: &[Action],
+) -> WaitingState {
+    r.clear_screen();
+    display_header_stats(r, state);
+    r.move_cursor_to(7, 0);
+    match state.location() {
+        Location::PUNK => writeln_colored!(White, r, "Ты сейчас на факультете. К кому идти?"),
+        Location::PDMI => writeln_colored!(White, r, "Ты сейчас в ПОМИ. К кому идти?"),
+        _ => unreachable!("В этой локации нельзя ходить к преподам")
+    }
+    writeln!(r);
+    dialog(r, available_actions)
+}
+

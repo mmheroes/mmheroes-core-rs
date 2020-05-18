@@ -244,6 +244,10 @@ impl GameUI<'_> {
                     *interaction,
                 )
             }
+            GoToProfessor(state) => {
+                screens::scene_router::display_available_professors(&mut self.renderer, state, self.game.available_actions())
+            },
+            Exam(state, subject) => todo!(),
             SurfInternet(state, found_program) => {
                 screens::scene_router::display_surfing_internet(
                     &mut self.renderer,
@@ -446,6 +450,7 @@ fn dialog_option_for_action(action: Action) -> DialogOption {
                 professor_name(subject)
             }
         }
+        Action::DontGoToProfessor => "Ни к кому",
         Action::RandomStudent => "Случайный студент",
         Action::CleverStudent => "Шибко умный",
         Action::ImpudentStudent => "Шибко наглый",

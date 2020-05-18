@@ -24,6 +24,7 @@ pub enum Action {
     No,
     InteractWithClassmate(Classmate),
     Exam(Subject),
+    DontGoToProfessor,
     RandomStudent,
     CleverStudent,
     ImpudentStudent,
@@ -186,6 +187,12 @@ pub enum GameScreen {
     /// Взаимодействие с Кузьменко.
     KuzmenkoInteraction(GameState, npc::KuzmenkoInteraction),
 
+    /// Экран "Идти к преподу"
+    GoToProfessor(GameState),
+
+    /// Экран сдачи зачёта.
+    Exam(GameState, Subject),
+
     // TODO: Добавить больше параметров. Сейчас поддерживается только "не тянет поспать"
     /// Сон.
     Sleep(GameState),
@@ -300,6 +307,8 @@ impl Game {
             | PashaInteraction(state, _)
             | GrishaInteraction(state, _)
             | KuzmenkoInteraction(state, _)
+            | GoToProfessor(state)
+            | Exam(state, _)
             | SurfInternet(state, _)
             | RestInMausoleum(state) => Some(state),
             Intro | InitialParameters | Ding(_) | WannaTryAgain | Disclaimer
@@ -371,6 +380,20 @@ impl Game {
                 assert_eq!(action, Action::AnyKey);
                 let state = state.clone();
                 self.scene_router(state)
+            }
+            GoToProfessor(state) => match action {
+                Action::Exam(subject) => {
+                    let state = state.clone();
+                    self.enter_exam(state, subject)
+                }
+                Action::DontGoToProfessor => {
+                    let state = state.clone();
+                    self.scene_router(state)
+                }
+                _ => illegal_action!(action)
+            }
+            Exam(state, subject) => {
+                todo!()
             }
             SurfInternet(state, found_program) => {
                 let state = state.clone();
@@ -581,6 +604,14 @@ impl Game {
         }
     }
 
+    fn enter_exam(
+        &mut self,
+        state: GameState,
+        subject: Subject,
+    ) -> tiny_vec_ty![Action; 16] {
+        todo!()
+    }
+
     fn handle_sleeping(
         &mut self,
         state: GameState,
@@ -676,7 +707,16 @@ impl Game {
     ) -> tiny_vec_ty![Action; 16] {
         assert_eq!(state.location, Location::PUNK);
         match action {
-            Action::GoToProfessor => todo!(),
+            Action::GoToProfessor => {
+                let mut available_actions = state
+                    .current_day()
+                    .current_exams(state.location, state.current_time)
+                    .map(|exam| Action::Exam(exam.subject()))
+                    .collect::<tiny_vec_ty![Action; 16]>();
+                available_actions.push(Action::DontGoToProfessor);
+                self.screen = GameScreen::GoToProfessor(state);
+                available_actions
+            },
             Action::LookAtBaobab => {
                 self.screen = GameScreen::HighScores(state);
                 wait_for_any_key()
@@ -795,7 +835,7 @@ impl Game {
                     let exam_start_time = Time(10u8 + self.rng.random(5));
                     let exam_end_time =
                         exam_start_time + Duration(1i8 + self.rng.random(2));
-                    let additional_exam = Exam::new(
+                    let additional_exam = timetable::Exam::new(
                         Subject::ComputerScience,
                         exam_start_time,
                         exam_end_time,
