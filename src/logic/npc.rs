@@ -359,3 +359,45 @@ pub enum GrishaInteraction {
     /// "Вот у механиков - у них халява!"
     MechanicsHaveFreebie { drink_beer: bool, hour_pass: bool },
 }
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum KuzmenkoInteraction {
+    /// "Вы знаете, Климова можно найти в компьютерном классе 24-го мая с 10 по 11ч.."
+    AdditionalComputerScienceExam { day_index: usize },
+
+    /// "... отформатировать дискету так, чтобы 1ый сектор был 5ым ..."
+    FormatFloppy,
+
+    /// "А Вы нигде не видели литературы по фильтрам в Windows?"
+    FiltersInWindows,
+
+    /// "... написать визуализацию байта на ассемблере за 11 байт ..."
+    ByteVisualization,
+
+    /// "У вас Олег Плисс ведет какие-нибудь занятия?"
+    OlegPliss,
+
+    /// "Bill Gates = must die = кабысдох (рус.)."
+    BillGatesMustDie,
+
+    /// "Вы читали журнал "Монитор"? Хотя вряд ли..."
+    MonitorJournal,
+
+    /// "Я слышал, что mmHeroes написана на BP 7.0."
+    MmheroesBP7,
+
+    /// "Записывайтесь на мой семинар по языку Си!"
+    CSeminar,
+
+    /// "На третьем курсе я буду вести у вас спецвычпрактикум."
+    ThirdYear,
+
+    /// "Интересно, когда они снова наладят STAR?"
+    STAR,
+
+    /// "Получите себе ящик rambler'e или на mail.ru !"
+    GetYourselvesAnEmail,
+
+    /// "А разве Терехов-старший ничего не рассказывает про IBM PC?"
+    TerekhovSenior,
+}

@@ -34,7 +34,7 @@ pub enum RendererRequest<'a> {
 /// очень простой, так как не предназначен для сохранения данных за пределами текущего
 /// процесса.
 struct RendererRequestQueue {
-    encoded: tiny_vec_ty![u8; 2048],
+    encoded: tiny_vec_ty![u8; 4096],
 }
 
 impl RendererRequestQueue {
@@ -163,7 +163,7 @@ impl Renderer {
     pub(in crate::ui) fn new() -> Renderer {
         Renderer {
             request_queue: RendererRequestQueue {
-                encoded: <tiny_vec_ty![u8; 2048]>::new(),
+                encoded: <tiny_vec_ty![u8; 4096]>::new(),
             },
             line: 0,
             column: 0,

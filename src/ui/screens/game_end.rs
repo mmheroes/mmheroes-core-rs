@@ -5,6 +5,7 @@ pub(in crate::ui) fn display_i_am_done(
     r: &mut Renderer,
     available_actions: &[Action],
 ) -> WaitingState {
+    r.clear_screen();
     writeln_colored!(White, r, "Ну, может не надо так резко...");
     writeln_colored!(White, r, "Ты что, серьезно хочешь закончить игру?");
     writeln!(r);
@@ -75,6 +76,7 @@ pub(in crate::ui) fn display_game_end(
     r: &mut Renderer,
     state: &GameState,
 ) -> WaitingState {
+    r.clear_screen();
     if let Some(cause_of_death) = state.player().cause_of_death() {
         display_game_end_dead(r, cause_of_death)
     } else {
@@ -86,6 +88,7 @@ pub(in crate::ui) fn display_wanna_try_again(
     r: &mut Renderer,
     available_actions: &[Action],
 ) -> WaitingState {
+    r.clear_screen();
     writeln_colored!(White, r, "Хочешь попробовать еще?");
     writeln!(r);
     writeln!(r);
@@ -94,6 +97,7 @@ pub(in crate::ui) fn display_wanna_try_again(
 }
 
 pub(in crate::ui) fn display_disclaimer(r: &mut Renderer) -> WaitingState {
+    r.clear_screen();
     writeln_colored!(Green, r, "DISCLAIMER");
     writeln!(r);
     r.set_color(Color::BlueBright, Color::Black);

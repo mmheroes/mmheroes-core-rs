@@ -187,52 +187,33 @@ impl GameUI<'_> {
         }
 
         let new_waiting_state = match self.game.screen() {
-            Intro => {
-                self.renderer.clear_screen();
-                screens::initial::display_intro(&mut self.renderer)
-            }
-            InitialParameters => {
-                self.renderer.clear_screen();
-                screens::initial::display_initial_parameters(
-                    &mut self.renderer,
-                    self.game.available_actions(),
-                    self.game.mode(),
-                )
-            }
-            Ding(_) => {
-                self.renderer.clear_screen();
-                screens::initial::display_ding(&mut self.renderer)
-            }
+            Intro => screens::initial::display_intro(&mut self.renderer),
+            InitialParameters => screens::initial::display_initial_parameters(
+                &mut self.renderer,
+                self.game.available_actions(),
+                self.game.mode(),
+            ),
+            Ding(_) => screens::initial::display_ding(&mut self.renderer),
             GameScreen::Timetable(state) => {
-                self.renderer.clear_screen();
                 screens::timetable::display_timetable(&mut self.renderer, state)
             }
-            SceneRouter(state) => {
-                self.renderer.clear_screen();
-                screens::scene_router::display_scene_router(
-                    &mut self.renderer,
-                    self.game.available_actions(),
-                    state,
-                )
-            }
+            SceneRouter(state) => screens::scene_router::display_scene_router(
+                &mut self.renderer,
+                self.game.available_actions(),
+                state,
+            ),
             Sleep(state) => {
                 screens::scene_router::display_sleeping(&mut self.renderer, state)
             }
-            HighScores(_) => {
-                self.renderer.clear_screen();
-                screens::high_scores::display_high_scores(
-                    &mut self.renderer,
-                    &self.high_scores,
-                )
-            }
-            RestInMausoleum(state) => {
-                self.renderer.clear_screen();
-                screens::rest::display_rest_in_mausoleum(
-                    &mut self.renderer,
-                    self.game.available_actions(),
-                    state,
-                )
-            }
+            HighScores(_) => screens::high_scores::display_high_scores(
+                &mut self.renderer,
+                &self.high_scores,
+            ),
+            RestInMausoleum(state) => screens::rest::display_rest_in_mausoleum(
+                &mut self.renderer,
+                self.game.available_actions(),
+                state,
+            ),
             KolyaInteraction(state, interaction) => {
                 screens::npc::display_kolya_interaction(
                     &mut self.renderer,
@@ -242,7 +223,6 @@ impl GameUI<'_> {
                 )
             }
             PashaInteraction(state, interaction) => {
-                self.renderer.clear_screen();
                 screens::npc::display_pasha_interaction(
                     &mut self.renderer,
                     state,
@@ -257,6 +237,13 @@ impl GameUI<'_> {
                     *interaction,
                 )
             }
+            KuzmenkoInteraction(state, interaction) => {
+                screens::npc::display_kuzmenko_interaction(
+                    &mut self.renderer,
+                    state,
+                    *interaction,
+                )
+            }
             SurfInternet(state, found_program) => {
                 screens::scene_router::display_surfing_internet(
                     &mut self.renderer,
@@ -264,70 +251,42 @@ impl GameUI<'_> {
                     *found_program,
                 )
             }
-            IAmDone(_) => {
-                self.renderer.clear_screen();
-                screens::game_end::display_i_am_done(
-                    &mut self.renderer,
-                    self.game.available_actions(),
-                )
-            }
+            IAmDone(_) => screens::game_end::display_i_am_done(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
             GameEnd(state) => {
-                self.renderer.clear_screen();
                 screens::game_end::display_game_end(&mut self.renderer, state)
             }
-            WannaTryAgain => {
-                self.renderer.clear_screen();
-                screens::game_end::display_wanna_try_again(
-                    &mut self.renderer,
-                    self.game.available_actions(),
-                )
-            }
-            Disclaimer => {
-                self.renderer.clear_screen();
-                screens::game_end::display_disclaimer(&mut self.renderer)
-            }
-            WhatToDo(_) => {
-                self.renderer.clear_screen();
-                screens::help::display_what_to_do(
-                    &mut self.renderer,
-                    self.game.available_actions(),
-                )
-            }
-            AboutScreen(_) => {
-                self.renderer.clear_screen();
-                screens::help::display_about_screen(
-                    &mut self.renderer,
-                    self.game.available_actions(),
-                )
-            }
-            WhereToGoAndWhy(_) => {
-                self.renderer.clear_screen();
-                screens::help::display_where_to_go_and_why(
-                    &mut self.renderer,
-                    self.game.available_actions(),
-                )
-            }
-            AboutProfessors(_) => {
-                self.renderer.clear_screen();
-                screens::help::display_about_professors(
-                    &mut self.renderer,
-                    self.game.available_actions(),
-                )
-            }
-            AboutCharacters(_) => {
-                self.renderer.clear_screen();
-                screens::help::display_about_characters(
-                    &mut self.renderer,
-                    self.game.available_actions(),
-                )
-            }
-            AboutThisProgram(_) => {
-                self.renderer.clear_screen();
-                screens::help::display_about_this_program(
-                    &mut self.renderer,
-                    self.game.available_actions(),
-                )
-            }
+            WannaTryAgain => screens::game_end::display_wanna_try_again(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
+            Disclaimer => screens::game_end::display_disclaimer(&mut self.renderer),
+            WhatToDo(_) => screens::help::display_what_to_do(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
+            AboutScreen(_) => screens::help::display_about_screen(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
+            WhereToGoAndWhy(_) => screens::help::display_where_to_go_and_why(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
+            AboutProfessors(_) => screens::help::display_about_professors(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
+            AboutCharacters(_) => screens::help::display_about_characters(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
+            AboutThisProgram(_) => screens::help::display_about_this_program(
+                &mut self.renderer,
+                self.game.available_actions(),
+            ),
             Terminal => {
                 self.renderer.waiting_state = None;
                 return false;

@@ -1,5 +1,5 @@
 use crate::logic::*;
-use crate::ui::renderer::{Column, Line};
+use crate::ui::renderer::{Column, Line, Renderer};
 use crate::ui::*;
 
 fn output_remaining_problems(
@@ -8,8 +8,10 @@ fn output_remaining_problems(
     subject_status: &SubjectStatus,
 ) {
     let (line, column) = r.get_cursor_position();
-    let problems_remaining = SUBJECTS[subject_status.subject()].1.required_problems()
-        - subject_status.problems_done();
+    let problems_remaining = SUBJECTS[subject_status.subject()]
+        .1
+        .required_problems()
+        .saturating_sub(subject_status.problems_done());
     if let Some(passed_day) = subject_status.passed_exam_day(timetable) {
         r.set_color(Color::WhiteBright, Color::Black);
         write!(r, "ЗАЧЕТ");
@@ -102,6 +104,7 @@ pub(in crate::ui) fn display_timetable(
     r: &mut Renderer,
     state: &GameState,
 ) -> WaitingState {
+    r.clear_screen();
     let today = state.current_day();
     for (i, (subject, _)) in SUBJECTS.iter().enumerate() {
         let line = (i as Line) * TIMETABLE_ROW_HEIGHT + TIMETABLE_START_Y;

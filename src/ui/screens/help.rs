@@ -5,6 +5,7 @@ pub(in crate::ui) fn display_what_to_do(
     r: &mut Renderer,
     available_actions: &[Action],
 ) -> WaitingState {
+    r.clear_screen();
     write_colored!(White, r, "Есть всего ");
     write_colored!(YellowBright, r, "6 дней");
     write_colored!(White, r, ". За это время надо успеть получить ");
@@ -59,6 +60,7 @@ pub(in crate::ui) fn display_about_screen(
     r: &mut Renderer,
     available_actions: &[Action],
 ) -> WaitingState {
+    r.clear_screen();
     write_colored!(White, r, "В левом верхнем углу - игровые ");
     write_colored!(YellowBright, r, "дата");
     write_colored!(White, r, " и ");
@@ -122,6 +124,7 @@ pub(in crate::ui) fn display_where_to_go_and_why(
     r: &mut Renderer,
     available_actions: &[Action],
 ) -> WaitingState {
+    r.clear_screen();
     write_colored!(White, r, "В ");
     write_colored!(YellowBright, r, "общаге");
     writeln_colored!(White, r, " ты готовишься и отдыхаешь.");
@@ -175,6 +178,7 @@ pub(in crate::ui) fn display_about_professors(
     r: &mut Renderer,
     available_actions: &[Action],
 ) -> WaitingState {
+    r.clear_screen();
     write_colored!(YellowBright, r, "Всемирнов М.А., алгебра");
     writeln_colored!(White, r, " - очень серьезный и весьма строгий.");
 
@@ -200,6 +204,7 @@ pub(in crate::ui) fn display_about_characters(
     r: &mut Renderer,
     available_actions: &[Action],
 ) -> WaitingState {
+    r.clear_screen();
     write_colored!(YellowBright, r, "Diamond");
     writeln_colored!(
         White,
@@ -279,6 +284,7 @@ pub(in crate::ui) fn display_about_this_program(
     r: &mut Renderer,
     available_actions: &[Action],
 ) -> WaitingState {
+    r.clear_screen();
     writeln_colored!(WhiteBright, r, "CrWMM Development Team:");
     writeln!(r);
 

@@ -183,6 +183,9 @@ pub enum GameScreen {
     /// Взаимодействие с Гришей.
     GrishaInteraction(GameState, npc::GrishaInteraction),
 
+    /// Взаимодействие с Кузьменко.
+    KuzmenkoInteraction(GameState, npc::KuzmenkoInteraction),
+
     // TODO: Добавить больше параметров. Сейчас поддерживается только "не тянет поспать"
     /// Сон.
     Sleep(GameState),
@@ -296,6 +299,7 @@ impl Game {
             | KolyaInteraction(state, _)
             | PashaInteraction(state, _)
             | GrishaInteraction(state, _)
+            | KuzmenkoInteraction(state, _)
             | SurfInternet(state, _)
             | RestInMausoleum(state) => Some(state),
             Intro | InitialParameters | Ding(_) | WannaTryAgain | Disclaimer
@@ -362,6 +366,11 @@ impl Game {
                 let state = state.clone();
                 let interaction = *interaction;
                 self.proceed_with_grisha(state, action, interaction)
+            }
+            KuzmenkoInteraction(state, _) => {
+                assert_eq!(action, Action::AnyKey);
+                let state = state.clone();
+                self.scene_router(state)
             }
             SurfInternet(state, found_program) => {
                 let state = state.clone();
@@ -768,6 +777,77 @@ impl Game {
         self.hour_pass(state)
     }
 
+    fn interact_with_kuzmenko(
+        &mut self,
+        mut state: GameState,
+    ) -> tiny_vec_ty![Action; 16] {
+        use npc::KuzmenkoInteraction::*;
+        let tomorrow = state.current_day_index + 1;
+        let saturday = 5;
+        let mut additional_exam_day_idx: Option<usize> = None;
+        if tomorrow <= saturday {
+            for i in (tomorrow..=saturday).rev() {
+                let day = &mut state.timetable.days_mut()[i];
+                let has_enough_charisma =
+                    state.player.charisma > self.rng.random(CharismaLevel(18));
+                let can_add_exam = day.exam(Subject::ComputerScience).is_none();
+                if has_enough_charisma && can_add_exam {
+                    let exam_start_time = Time(10u8 + self.rng.random(5));
+                    let exam_end_time =
+                        exam_start_time + Duration(1i8 + self.rng.random(2));
+                    let additional_exam = Exam::new(
+                        Subject::ComputerScience,
+                        exam_start_time,
+                        exam_end_time,
+                        Location::ComputerClass,
+                    );
+                    day.add_exam(additional_exam);
+                    additional_exam_day_idx = Some(i);
+                    break;
+                }
+            }
+        }
+
+        self.screen = match additional_exam_day_idx {
+            // Проверка на `state.additional_computer_science_exams < 2` должна быть
+            // раньше — до модификации расписания.
+            // Иначе получается, что при достаточной харизме Кузьменко может
+            // добавить экзамены по информатике на каждый день.
+            // Баг в оригинальной реализации. Возможно, стоит исправить, но
+            // пока не буду.
+            Some(additional_exam_day_idx)
+                if state.additional_computer_science_exams < 2 =>
+            {
+                state.additional_computer_science_exams += 1;
+                GameScreen::KuzmenkoInteraction(
+                    state,
+                    AdditionalComputerScienceExam {
+                        day_index: additional_exam_day_idx,
+                    },
+                )
+            }
+            _ => {
+                let replies = [
+                    FormatFloppy,
+                    FiltersInWindows,
+                    ByteVisualization,
+                    OlegPliss,
+                    BillGatesMustDie,
+                    MonitorJournal,
+                    MmheroesBP7,
+                    CSeminar,
+                    ThirdYear,
+                    STAR,
+                    GetYourselvesAnEmail,
+                    TerekhovSenior,
+                ];
+                GameScreen::KuzmenkoInteraction(state, *self.rng.random_element(&replies))
+            }
+        };
+
+        wait_for_any_key()
+    }
+
     fn handle_computer_class_action(
         &mut self,
         mut state: GameState,
@@ -801,7 +881,7 @@ impl Game {
             }
             Action::SurfInternet => self.surf_internet(state),
             Action::InteractWithClassmate(RAI) => todo!(),
-            Action::InteractWithClassmate(Kuzmenko) => todo!(),
+            Action::InteractWithClassmate(Kuzmenko) => self.interact_with_kuzmenko(state),
             Action::InteractWithClassmate(Diamond) => todo!(),
             Action::PlayMMHEROES => todo!(),
             Action::IAmDone => self.i_am_done(state),

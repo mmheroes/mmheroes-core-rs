@@ -217,7 +217,7 @@ macro_rules! __tiny_vec_implementation {
 
 __tiny_vec_implementation!(16);
 __tiny_vec_implementation!(128);
-__tiny_vec_implementation!(2048);
+__tiny_vec_implementation!(4096);
 
 impl<Storage: TinyVecStorage> TinyVec<Storage> {
     pub(crate) fn clear(&mut self) {

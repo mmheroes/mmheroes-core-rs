@@ -4,6 +4,7 @@ pub(in crate::ui) fn display_high_scores(
     r: &mut Renderer,
     high_scores: &[HighScore],
 ) -> WaitingState {
+    r.clear_screen();
     r.set_color(Color::WhiteBright, Color::Black);
     writeln!(r, "******                                           ******");
     writeln!(r, "      *********                         *********");

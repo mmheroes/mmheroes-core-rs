@@ -103,6 +103,7 @@ pub(in crate::ui) fn display_pasha_interaction(
     state: &GameState,
     interaction: npc::PashaInteraction,
 ) -> WaitingState {
+    r.clear_screen();
     scene_router::display_header_stats(r, state);
     r.move_cursor_to(7, 0);
     match interaction {
@@ -298,5 +299,55 @@ pub(in crate::ui) fn display_grisha_interaction(
         writeln_colored!(White, r, "И еще один час прошел в бесплодных разговорах...");
     }
 
+    wait_for_any_key(r)
+}
+
+pub(in crate::ui) fn display_kuzmenko_interaction(
+    r: &mut Renderer,
+    state: &GameState,
+    interaction: npc::KuzmenkoInteraction,
+) -> WaitingState {
+    use crate::logic::npc::KuzmenkoInteraction::*;
+    r.clear_screen();
+    scene_router::display_header_stats(r, state);
+    r.move_cursor_to(7, 0);
+    write_colored!(White, r, "Кузьменко:");
+    let reply = match interaction {
+        AdditionalComputerScienceExam { day_index } => {
+            let exam = state.timetable().days()[day_index]
+                .exam(Subject::ComputerScience)
+                .unwrap();
+            writeln_colored!(
+                WhiteBright,
+                r,
+                "\"Вы знаете, Климова можно найти в компьютерном классе"
+            );
+            // Первый день недели — 22-е мая.
+            writeln_colored!(
+                WhiteBright,
+                r,
+                "{}-го мая с {} по {}ч..\"",
+                22 + day_index,
+                exam.from(),
+                exam.to()
+            );
+            return wait_for_any_key(r);
+        }
+        FormatFloppy => "... отформатировать дискету так, чтобы 1ый сектор был 5ым ...",
+        FiltersInWindows => "А Вы нигде не видели литературы по фильтрам в Windows?",
+        ByteVisualization => {
+            "... написать визуализацию байта на ассемблере за 11 байт ..."
+        }
+        OlegPliss => "У вас Олег Плисс ведет какие-нибудь занятия?",
+        BillGatesMustDie => "Bill Gates = must die = кабысдох (рус.).",
+        MonitorJournal => "Вы читали журнал \"Монитор\"? Хотя вряд ли...",
+        MmheroesBP7 => "Я слышал, что mmHeroes написана на BP 7.0.",
+        CSeminar => "Записывайтесь на мой семинар по языку Си!",
+        ThirdYear => "На третьем курсе я буду вести у вас спецвычпрактикум.",
+        STAR => "Интересно, когда они снова наладят STAR?",
+        GetYourselvesAnEmail => "Получите себе ящик rambler'e или на mail.ru !",
+        TerekhovSenior => "А разве Терехов-старший ничего не рассказывает про IBM PC?",
+    };
+    writeln_colored!(WhiteBright, r, "\"{}\"", reply);
     wait_for_any_key(r)
 }

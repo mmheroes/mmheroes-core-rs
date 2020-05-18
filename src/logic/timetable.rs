@@ -113,6 +113,20 @@ pub struct Exam {
 }
 
 impl Exam {
+    pub(in crate::logic) fn new(
+        subject: Subject,
+        from: Time,
+        to: Time,
+        location: Location,
+    ) -> Exam {
+        Exam {
+            subject,
+            from,
+            to,
+            location,
+        }
+    }
+
     pub fn subject(&self) -> Subject {
         self.subject
     }
@@ -141,7 +155,7 @@ impl Day {
         self.exams[subject as usize].as_ref()
     }
 
-    fn add_exam(&mut self, exam: Exam) {
+    pub(in crate::logic) fn add_exam(&mut self, exam: Exam) {
         self.exams[exam.subject as usize] = Some(exam)
     }
 
@@ -184,12 +198,13 @@ impl Timetable {
                     subject_info.exam_min_duration..=subject_info.exam_max_duration,
                 );
 
-                days[day_idx].add_exam(Exam {
-                    subject: *subject,
-                    from: exam_start_time,
-                    to: exam_start_time + exam_duration,
-                    location: *rng.random_element(&subject_info.exam_places),
-                });
+                let exam = Exam::new(
+                    *subject,
+                    exam_start_time,
+                    exam_start_time + exam_duration,
+                    *rng.random_element(&subject_info.exam_places),
+                );
+                days[day_idx].add_exam(exam);
             }
         }
         Timetable { days }
@@ -197,6 +212,10 @@ impl Timetable {
 
     pub fn days(&self) -> &[Day] {
         &self.days
+    }
+
+    pub fn days_mut(&mut self) -> &mut [Day] {
+        &mut self.days
     }
 }
 

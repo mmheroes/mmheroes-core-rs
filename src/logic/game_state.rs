@@ -8,6 +8,7 @@ pub struct GameState {
     pub(in crate::logic) timetable: timetable::Timetable,
     pub(in crate::logic) location: Location,
     pub(in crate::logic) classmates: Classmates,
+    pub(in crate::logic) additional_computer_science_exams: u8,
 }
 
 impl GameState {
@@ -23,6 +24,7 @@ impl GameState {
             timetable,
             location,
             classmates: Classmates::new(),
+            additional_computer_science_exams: 0,
         }
     }
 

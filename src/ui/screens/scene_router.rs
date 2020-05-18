@@ -7,6 +7,7 @@ pub(in crate::ui) fn display_scene_router(
     available_actions: &[Action],
     state: &GameState,
 ) -> WaitingState {
+    r.clear_screen();
     display_header_stats(r, state);
     display_short_today_timetable(r, 9, state.current_day(), state.player());
     r.set_color(Color::White, Color::Black);

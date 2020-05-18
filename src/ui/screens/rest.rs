@@ -6,6 +6,7 @@ pub(in crate::ui) fn display_rest_in_mausoleum(
     available_actions: &[Action],
     state: &GameState,
 ) -> WaitingState {
+    r.clear_screen();
     scene_router::display_header_stats(r, state);
     r.move_cursor_to(7, 0);
     writeln_colored!(White, r, "Выбери себе способ \"культурного отдыха\".");
